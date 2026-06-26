@@ -1,0 +1,161 @@
+{
+  "periodo": {
+    "descricao": "Semana anterior (segunda 00:00 a domingo 23:59 BRT)",
+    "timezone_csv": "BRT (UTC-3)",
+    "timezone_zendesk": "UTC (BRT + 3h)"
+  },
+  "canais": [
+    {
+      "slack_channel": "#the-cxm-house",
+      "tipo": "geral",
+      "nome_report": "Report VoC",
+      "verticais": "TODAS",
+      "tags_zendesk": []
+    },
+    {
+      "slack_channel": "#lideres-cx-e-cxm",
+      "tipo": "executivo",
+      "nome_report": "Report VoC",
+      "verticais": "TODAS",
+      "tags_zendesk": [],
+      "formato": "condensado"
+    },
+    {
+      "slack_channel": "#account_cx",
+      "tipo": "produto",
+      "nome_report": "Report de VoC - Minha Conta",
+      "verticais": ["Minha Conta"],
+      "tags_zendesk": ["minha_conta", "minha_conta_logado"]
+    },
+    {
+      "slack_channel": "#cc-produto-e-cx",
+      "tipo": "produto",
+      "nome_report": "Report de VoC - Cartão de Crédito",
+      "verticais": ["Cartão de Crédito"],
+      "tags_zendesk": ["cartão_de_crédito_da_recargapay"]
+    },
+    {
+      "slack_channel": "#cx_fraud",
+      "tipo": "produto_multiplo",
+      "produtos": [
+        {
+          "nome_report": "Report de VoC - Conta Desativada",
+          "verticais": ["Conta Desativada"],
+          "tags_zendesk": ["conta_desativada"]
+        },
+        {
+          "nome_report": "Report de VoC - Carteira Desativada",
+          "verticais": ["Carteira Desativada"],
+          "tags_zendesk": ["carteira_desativada"]
+        },
+        {
+          "nome_report": "Report de VoC - Chargeback Recovery",
+          "verticais": ["Chargeback Recovery"],
+          "tags_zendesk": ["chargeback_recovery_vertical"]
+        }
+      ]
+    },
+    {
+      "slack_channel": "#investments-e-cx",
+      "tipo": "produto_multiplo",
+      "produtos": [
+        {
+          "nome_report": "Report de VoC - CDB",
+          "verticais": ["CDB"],
+          "tags_zendesk": ["cdb"]
+        },
+        {
+          "nome_report": "Report de VoC - Rendimento CDI",
+          "verticais": ["Rendimento CDI"],
+          "tags_zendesk": ["rendimento_cdi"]
+        },
+        {
+          "nome_report": "Report de VoC - Movimentações Financeiras",
+          "verticais": ["Movimentações Financeiras"],
+          "tags_zendesk": ["movimentações_financeiras"]
+        }
+      ]
+    },
+    {
+      "slack_channel": "#melhoria-continua-verticais",
+      "tipo": "produto_multiplo",
+      "produtos": [
+        {
+          "nome_report": "Report de VoC - Transporte",
+          "verticais": ["Transporte"],
+          "tags_zendesk": ["transporte_vertical"]
+        },
+        {
+          "nome_report": "Report de VoC - Contas e Boletos",
+          "verticais": ["Contas e Boletos"],
+          "tags_zendesk": ["contas_e_boletos_"]
+        },
+        {
+          "nome_report": "Report de VoC - Boleto de Cobrança",
+          "verticais": ["Boleto de Cobrança"],
+          "tags_zendesk": ["boleto_de_cobrança"]
+        },
+        {
+          "nome_report": "Report de VoC - Recarga de Celular",
+          "verticais": ["Recarga de Celular"],
+          "tags_zendesk": ["recarga_de_celular_vertical"]
+        }
+      ]
+    },
+    {
+      "slack_channel": "#pixcc-home-raf-cx",
+      "tipo": "produto_multiplo",
+      "produtos": [
+        {
+          "nome_report": "Report de VoC - Pix",
+          "verticais": ["Pix In", "Pix Out", "Chaves Pix"],
+          "tags_zendesk": ["pix-in", "pix-out", "pix-chaves_pix"],
+          "nota": "Usar tags separadas (OR implícito no Zendesk) — NÃO somar queries separadas"
+        },
+        {
+          "nome_report": "Report de VoC - Pix CC",
+          "verticais": ["Pix CC"],
+          "tags_zendesk": ["CONFIRMAR_TAG_PIX_CC"],
+          "nota": "Validar tag exata com query exploratória antes de usar"
+        },
+        {
+          "nome_report": "Report de VoC - RAF",
+          "verticais": ["RAF Indicado", "RAF Indicador"],
+          "tags_zendesk": ["raf-indicado", "raf-indicador"]
+        }
+      ]
+    },
+    {
+      "slack_channel": "#squad_loan_seguimento",
+      "tipo": "produto",
+      "nome_report": "Report de VoC - Empréstimo",
+      "verticais": ["Empréstimo", "Crédito Consignado"],
+      "tags_zendesk": ["empréstimo_", "empréstimo_crédito_consignado"]
+    },
+    {
+      "slack_channel": "#subacquirer-cx",
+      "tipo": "produto_multiplo",
+      "produtos": [
+        {
+          "nome_report": "Report de VoC - Tap to Pay",
+          "verticais": ["Tap to Pay"],
+          "tags_zendesk": ["tap_to_pay"]
+        },
+        {
+          "nome_report": "Report de VoC - Link de Pagamento",
+          "verticais": ["Link de Pagamento"],
+          "tags_zendesk": ["link_de_pagamento"]
+        }
+      ]
+    }
+  ],
+  "alertas": {
+    "volume_desvio_percentual": 30,
+    "vertical_pico_percentual": 40,
+    "nova_causa_raiz_min_tickets": 10,
+    "csat_critico_threshold": 2.0,
+    "reincidencia_usuario_min": 3,
+    "concentracao_vertical_percentual": 50
+  },
+  "hub_voc_url": "https://sites.google.com/recargapay.com/voc/"
+}
