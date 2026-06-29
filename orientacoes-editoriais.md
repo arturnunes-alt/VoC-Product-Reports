@@ -1,326 +1,797 @@
-# Orientações Editoriais por Canal
-**Repositório:** voc-automation  
-**Arquivo:** orientacoes-editoriais.md  
-**Como usar:** Edite este arquivo antes de cada ciclo de reports para ajustar
-o foco analítico de cada canal à estratégia do período. A Routine lê este
-arquivo e aplica as orientações ao gerar cada report.
+# Orientações Editoriais e de Análise por Canal
+**Repositório:** VoC-Product-Reports  
+**Versão:** 2.0  
+**Mantenedor:** Artur Nunes — com inputs dos DRIs de cada squad
 
 ---
 
-## Como funciona
+## Como usar este arquivo
 
-Cada canal tem três campos editáveis:
+Este arquivo define **como** a Routine analisa e apresenta os dados — não **o quê** ela deve
+encontrar. A Routine identifica automaticamente os temas mais relevantes da semana lendo os
+canais Slack e os dados coletados. As orientações aqui garantem que a análise seja estruturada,
+comparável entre períodos e adequada a cada público.
 
-| Campo | O que controla |
-|---|---|
-| `foco_periodo` | O tema ou métrica que deve receber ênfase especial neste ciclo |
-| `contexto_estrategico` | Informação de negócio que o Claude deve usar para contextualizar variações |
-| `perguntas_prioritarias` | As 2–3 perguntas que o report deve responder obrigatoriamente para aquele canal |
-
-Campos em branco fazem a Routine usar o template padrão sem personalização.
-Mantenha os textos curtos — o Claude interpreta, não executa literalmente.
+**Não preencha temas ou eventos antecipadamente.** A Routine descobre os temas ao executar.
+Se houver contexto crítico pontual a adicionar (ex: incidente ainda não refletido nos dados),
+registre em `contexto_pontual` no canal correspondente — campo opcional, limpo a cada semana.
 
 ---
 
-## 🏠 #the-cxm-house — Report Geral
+## INDICADORES — REFERÊNCIA GLOBAL
 
-**Público:** Time CXM completo (analistas, coordenadores, gestores de CX)  
-**Cadência:** Semanal · toda segunda-feira
+Aplicar a todos os reports. A Routine usa estas definições para calcular e apresentar cada métrica.
+
+### NPS Transacional
+- **Meta:** 75 pts
+- **Escala:** 0–10 · Promotores ≥9 · Detratores ≤6
+- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric = 'nps-0-10'`
+- **Quando:** Pesquisa enviada após cada transação realizada
+- **Segmentação:** Por produto/vertical
+- **Variações:** Correlacionar com mudanças de produto, atualizações e incidentes do período
+- **Perguntas adicionais:** Extrair temas recorrentes das respostas abertas
+
+### NPS Relacional
+- **Meta:** 50 pts
+- **Escala:** 0–10 · Promotores ≥9 · Detratores ≤6
+- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric = 'nps-relacional'` (ou métrica equivalente)
+- **Quando:** Pesquisa enviada para clientes ativos da base
+- **Segmentação:** PF vs PJ — apresentar separadamente
+- **Variações:** Fortemente impactada por incidentes, atualizações do app e mudanças de produto
+- **Perguntas adicionais:** Mapear menções a produtos específicos nos feedbacks abertos
+
+### CSAT Atendimento (Customer Service N1)
+- **Meta:** 80%
+- **Escala:** 1–5 · Satisfeitos ≥4 · Insatisfeitos ≤2
+- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric = 'csat-1-5'` + `flg_human = true`
+- **Quando:** Pesquisa enviada após atendimento humano (C2C, Chat, E-mail)
+- **Inclui:** Pergunta de Resolutividade — apresentar % de resolução separadamente
+- **Mede:** Satisfação com o atendimento recebido e solução oferecida
+
+### CSAT RecargaBot
+- **Meta:** 80%
+- **Escala:** 1–5
+- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric = 'csat-1-5'` + `flg_retention_bot = true`
+- **Quando:** Pesquisa enviada para clientes retidos pelo bot sem transferência humana
+- **Inclui:** Pergunta de Resolutividade — apresentar % de resolução separadamente
+- **Mede:** Satisfação com o atendimento do RecargaBot
+
+### Retenção de Bot
+- **Definição:** % de contatos resolvidos pelo RecargaBot sem transbordo para humano
+- **Cálculo:** Tickets com `flg_retention_bot = true` ÷ total de contatos iniciados no bot
+- **Fonte:** `prod.cx.dim_zendesk_tickets_summary`
+- **Apresentar:** % semanal + evolução nas últimas 5 semanas
+
+---
+
+## FUNIL DE SUPORTE — REFERÊNCIA GLOBAL
+
+Apresentar em todos os reports a visão do funil completo. A Routine monta este funil
+com dados do Databricks e Amplitude (ou `prod.cx.fat_help_center_events`).
 
 ```
-foco_periodo: >
-  Acompanhar o impacto do rollout de cashback (chegada a 100% da base em 29/06)
-  no volume e CSAT do Cartão de Crédito. Monitorar também a curva de Carteira
-  Bloqueada — verificar se o volume de contatos está cedendo após os ajustes
-  de comunicação do Projeto Carteira Bloqueada.
+Central de Ajuda (artigos acessados)
+    ↓ [% que acessa automações ou bot]
+RecargaBot (contatos iniciados)
+    ↓ [% retidos pelo bot — Retenção de Bot]
+Customer Service N1 (atendimento humano: C2C, Chat, E-mail)
+    ↓ [% escalados]
+Special Cases N2 (Ouvidoria, ReclameAqui, Regulatórios, Redes Sociais)
+```
 
-contexto_estrategico: >
-  Semana 27 marca o encerramento do ciclo de junho. A principal variável de
-  volume é o rollout de cashback (100% da base a partir de 29/06) e seus
-  reflexos em cancelamentos e contatos de Cartão. O Dreno Automático (Collateral
-  Wallet) deve estar estabilizando — comparar com o pico da semana 25.
+**Regras de separação obrigatórias:**
+- N1 (`flg_human = true`, `flg_invalid_bot = false`, `flg_retention_bot = false`, canal não contém 'deriva')
+- Bot retido (`flg_retention_bot = true`)
+- Special Cases N2 (canais: ouvidoria, reclameaqui, consumidor.gov, bacen, procon, redes sociais)
+- Derivações (canal contém 'deriva') — excluir de todas as contagens de volume
+- Duplicados e inválidos (`flg_invalid_bot = true`) — excluir sempre
 
-perguntas_prioritarias:
-  - O volume total da semana está dentro da tendência pós-pico de junho?
-  - Cartão de Crédito mantém queda WoW ou voltou a crescer com o rollout?
-  - Carteira Bloqueada: o contato por Fraud Strategy MANUAL cedeu ou manteve?
+---
+
+## PADRÃO DE APRESENTAÇÃO — SLACK
+
+Todos os reports são lidos em janela lateral do Slack. Aplicar sempre:
+
+- Mensagem raiz: máximo 5 linhas, nenhuma seção, texto corrido
+- Thread 1 (report): seções com `*Título*` em negrito, listas com `•`, sem tabelas complexas
+- Nunca usar tabelas markdown — usar listas alinhadas ou texto estruturado
+- Negrito (`*texto*`) apenas em números-chave, nomes de indicadores e alertas
+- Separar seções com linha em branco — sem `---` ou separadores visuais
+- Máximo 2 níveis de hierarquia: seção principal → itens com `•`
+- Omitir seções sem dados calculados — nunca exibir "indisponível" ou erro
+
+**Formato padrão de evolução (usar em todas as métricas com histórico):**
+```
+*NPS Transacional*
+Semana atual: *62 pts* (+4 vs sem. ant.) | Meta: 75
+Últimas 5 semanas: 58 → 59 → 61 → 58 → 62
+```
+
+**Formato padrão de volume com variação:**
+```
+*Atendimento N1*
+*1.243 tickets* esta semana (+8% vs sem. ant. | +12% vs média 4 sem.)
 ```
 
 ---
 
-## 👔 #lideres-cx-e-cxm — Report Executivo
+## 🏠 #the-cxm-house — REPORT GERAL
 
-**Público:** Marco Galan, Anderson Fernandes, líderes de produto e operações  
-**Cadência:** Semanal · toda segunda-feira  
-**Formato:** Condensado — máximo 5 seções, foco em impacto e tendência
+**Público:** Time CXM completo — analistas, coordenadores, gestores  
+**Formato:** Report analítico completo com correlações e oportunidades
+
+### Instruções de análise
+
+**Antes de gerar:** Ler os últimos 7 dias de `#the-cxm-house`, `#lideres-cx-e-cxm` e
+`#comunicados_e_atualizações_cx` para identificar os temas ativos da semana.
+Identificar automaticamente os 3 temas mais relevantes para o time CXM com base no
+volume de discussão, alertas postados e variações detectadas nos dados.
+
+**Estrutura do report (Thread 1):**
 
 ```
-foco_periodo: >
-  Destacar os três movimentos mais relevantes para decisão executiva:
-  (1) impacto do cashback no NPS e intenção de saída do Cartão,
-  (2) evolução do Projeto Carteira Bloqueada — redução de impacto ao cliente,
-  (3) curva de Empréstimo — estabilização pós-Collateral Wallet e novos clusters
-  de dívida cedida.
+*📊 Report VoC — Semana NN · DD/MM–DD/MM*
 
-contexto_estrategico: >
-  Lideranças estão acompanhando três OKRs simultaneamente: redução de contato
-  em Wallet Bloqueada, NPS Cartão acima de 55 pts, e taxa de automação do bot
-  acima de 50%. Cada seção do report deve conectar os dados a pelo menos um desses
-  objetivos quando possível.
+*Contexto da semana* 💬
+• [tema 1 identificado nos canais — 1 linha]
+• [tema 2 — 1 linha]
+• [tema 3 — 1 linha]
+Correlacionar cada tema com as variações observadas nos dados.
 
-perguntas_prioritarias:
-  - NPS Transacional da semana — subiu, caiu ou estabilizou vs semana anterior?
-  - Qual vertical representa o maior risco operacional desta semana?
-  - Há algum alerta que exige decisão executiva antes da próxima semana?
+─────────────────────────────
+*FUNIL DE SUPORTE*
+
+*Central de Ajuda*
+• [N] acessos a artigos no período 📊
+• Top 3 artigos mais acessados com volume
+• % que avançou para o RecargaBot
+
+*RecargaBot*
+• [N] contatos iniciados | Retenção: *[X%]* (Meta: — | sem. ant.: [X%])
+• CSAT Bot: *[X pts]* | Resolutividade: *[X%]*
+• Top 3 motivos de não-retenção
+
+*Customer Service N1*
+• *[N] atendimentos humanos* ([+/-X%] vs sem. ant. | [+/-X%] vs média 4 sem.)
+• Canais: Chat [X%] · C2C [X%] · E-mail [X%]
+• CSAT N1: *[X pts]* (Meta: 80% | Resolutividade: [X%])
+
+*Special Cases N2*
+• *[N] contatos* · Reclame Aqui: [N] · Ouvidoria: [N] · Consumidor.gov: [N]
+• Sentimento predominante: [positivo/negativo/neutro]
+
+─────────────────────────────
+*INDICADORES DE SATISFAÇÃO*
+
+*NPS Transacional* 📊
+[Formato padrão de evolução — 5 semanas]
+• Top 3 produtos com maior variação na semana
+• Temas recorrentes nas respostas abertas dos detratores
+
+*NPS Relacional* 📊
+PF: *[X pts]* | PJ: *[X pts]* (Meta: 50)
+Últimas 5 semanas: [série]
+• Menções a produtos nos feedbacks abertos
+
+*CSAT Atendimento* 📊
+[Formato padrão — 5 semanas]
+Satisfeitos (≥4): *[X%]* | Insatisfeitos (≤2): *[X%]*
+
+─────────────────────────────
+*TOP VERTICAIS — ATENDIMENTO N1*
+
+Para as top 5 verticais por volume:
+• [Vertical]: *[N] tickets* ([+/-X%] WoW) · Motivo principal: [motivo]
+
+─────────────────────────────
+*DESTAQUES E OPORTUNIDADES*
+
+Listar apenas movimentos que exijam ação do time de análise:
+• Crescimento fora do forecast (>20% WoW em motivo ou vertical)
+• Novo cluster de contatos emergente
+• Gap de automação identificado (alto volume, bot não resolve)
+• Motivo recorrente sem causa raiz mapeada
+
+─────────────────────────────
+*ALERTAS* 🚨
+[Apenas alertas com threshold atingido — omitir seção se não houver]
+🔴 *[NOME]* | Observado: [X] | Esperado: [Y] | [contexto 1 linha]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+**Comparação histórica:** Sempre comparar com as 5 semanas anteriores para volume,
+NPS, CSAT e Retenção de Bot. Usar Databricks para puxar série histórica.
+
+**Correlações obrigatórias:** Se houver variação >15% em qualquer indicador, identificar
+o evento ou ação da semana que pode explicar — buscar em Slack e dados antes de atribuir.
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## 👤 #account_cx — Minha Conta
+## 👔 #lideres-cx-e-cxm — REPORT EXECUTIVO
 
-**Público:** Squad de Account e CX responsável pela vertical  
-**Cadência:** Semanal
+**Público:** Marco Galan, Anderson Fernandes, gestores de produto e operações  
+**Formato:** Informativo e direto — correlaciona resultados com ações e eventos, sem expor oportunidades de melhoria
+
+### Instruções de análise
+
+**Antes de gerar:** Ler os últimos 7 dias de `#lideres-cx-e-cxm` para capturar o
+contexto de gestão ativo. Identificar os 2–3 resultados mais relevantes para lideranças
+(impacto em OKRs, incidentes críticos, tendências de satisfação).
+
+**Estrutura do report (Thread 1):**
 
 ```
-foco_periodo: >
-  Monitorar impacto do upgrade Spring 3 (SMS em Account — bug resolvido em jun/26)
-  verificando se há reincidência de falhas no envio de SMS de autenticação.
-  Atenção também para contatos de clientes que não conseguem acessar o app —
-  possível reflexo do anti-spam VIVO no C2C de recuperação de conta.
+*📊 Report Executivo VoC — Semana NN · DD/MM–DD/MM*
 
-contexto_estrategico: >
-  O bug de SMS por efeito colateral do upgrade Spring 3 foi corrigido, mas o time
-  está substituindo mandatories por feature flags — período de risco de regressão.
-  O bloqueio anti-spam da VIVO (57,5% das ligações não entregues) afeta o C2C
-  de recuperação de acesso — clientes que não recebem ligação voltam ao chat.
+*Resultado da semana em 3 linhas*
+[Síntese dos movimentos mais relevantes para decisão executiva — sem detalhes técnicos]
 
-perguntas_prioritarias:
-  - Há crescimento em motivos de contato relacionados a SMS ou autenticação?
-  - Contatos de dificuldade de acesso ao app aumentaram vs semana anterior?
-  - Qual o perfil PF/PJ dos tickets — há concentração incomum?
+─────────────────────────────
+*SATISFAÇÃO DO CLIENTE*
+
+*NPS Transacional:* *[X pts]* ([+/-X] vs sem. ant.) | Meta: 75
+Últimas 5 semanas: [série compacta]
+• [produto com maior alta] ↑ e [produto com maior queda] ↓
+• Correlação com [evento/ação da semana se houver]
+
+*NPS Relacional:* PF *[X pts]* · PJ *[X pts]* | Meta: 50
+• [variação relevante e correlação com ação/incidente]
+
+*CSAT Atendimento:* *[X%]* satisfeitos | Meta: 80%
+*CSAT RecargaBot:* *[X%]* satisfeitos | Meta: 80%
+
+─────────────────────────────
+*VOLUME DE SUPORTE*
+
+*[N] atendimentos totais* ([+/-X%] vs sem. ant.)
+• RecargaBot resolveu *[X%]* dos contatos (Retenção)
+• N1 humano: *[N]* atendimentos · N2 Special Cases: *[N]*
+• Vertical de maior volume: [vertical] — [motivo principal]
+
+─────────────────────────────
+*EVENTOS E IMPACTOS DA SEMANA* 💬
+• [evento 1] → impacto em [indicador/volume] [+/-X%]
+• [evento 2] → [impacto]
+[Omitir se não houver eventos relevantes com impacto mensurável]
+
+─────────────────────────────
+*PONTOS DE ATENÇÃO*
+[Apenas situações que exijam decisão ou acompanhamento executivo]
+🔴 [alerta crítico se houver]
+🟡 [situação a monitorar se houver]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+**Regras editoriais:**
+- Não expor oportunidades de melhoria operacional — foco em resultados e correlações
+- Não usar jargões técnicos de dados (tags, IDs de campo, nomes de tabelas)
+- Cada dado deve ter uma correlação com ação, evento ou incidente quando disponível
+- Máximo 1 scroll de leitura na janela lateral do Slack
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## 💳 #cc-produto-e-cx — Cartão de Crédito
+## 👤 #account_cx — MINHA CONTA
+
+**Público:** Squad Account e CX  
+**Formato:** Report de produto com abertura por perfil de cliente
+
+### Instruções de análise
+
+Identificar automaticamente os temas ativos lendo o canal `#account_cx` dos últimos 7 dias.
+Priorizar na análise os motivos com maior variação WoW e os temas com mais discussão no canal.
+
+**Aberturas obrigatórias por perfil:**
+- **New** (conta criada há ≤30 dias): via `fat_user_data.reg_date`
+- **NewNew** (conta >30 dias, nunca usou o produto): via `clo_orders` sem pedidos em Minha Conta
+- **Repeat** (já utilizou o produto anteriormente)
+
+**Estrutura do report (Thread 1):**
+
+```
+*📊 Report VoC — Minha Conta · Semana NN*
+
+─────────────────────────────
+*FUNIL DE SUPORTE — MINHA CONTA*
+[Funil completo: Central de Ajuda → Bot → N1 → N2]
+
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW | [+/-X%] vs média 4 sem.)
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+Top motivos de contato:
+• *[motivo 1]:* [N] tickets ([X%]) — [variação WoW]
+• *[motivo 2]:* [N] tickets ([X%])
+• *[motivo 3]:* [N] tickets ([X%])
+
+Top causas raiz (análise qualitativa via Zendesk MCP):
+• *[causa 1]:* [problema do cliente em 1 linha] | Bot resolve? [Sim/Não]
+• *[causa 2]:* [problema] | Bot: [Sim/Não]
+
+─────────────────────────────
+*PERFIL DOS CLIENTES*
+
+• *New* (≤30 dias): [N] tickets ([X%]) — motivo principal: [motivo]
+• *NewNew* (>30d sem uso): [N] tickets ([X%]) — motivo principal: [motivo]
+• *Repeat*: [N] tickets ([X%]) — motivo principal: [motivo]
+PF: [X%] · PJ: [X%]
+
+─────────────────────────────
+*NPS TRANSACIONAL — MINHA CONTA* 📊
+*[X pts]* ([+/-X] vs sem. ant.) | Meta: 75
+Últimas 5 semanas: [série]
+• Temas dos detratores: [temas das respostas abertas]
+
+─────────────────────────────
+*SPECIAL CASES N2*
+• [N] contatos · Sentimento: [predominante]
+• Temas principais: [temas]
+
+─────────────────────────────
+*DESTAQUES DA SEMANA* 💬
+• [tema identificado no canal com correlação nos dados]
+• [variação relevante com explicação]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+```
+contexto_pontual: ""
+```
+
+---
+
+## 💳 #cc-produto-e-cx — CARTÃO DE CRÉDITO
 
 **Público:** Squad Cartão de Crédito e CX  
-**Cadência:** Semanal
+**Formato:** Report de produto com abertura por tipo de cartão e perfil de cliente
+
+### Instruções de análise
+
+Identificar automaticamente os temas ativos lendo `#cc-produto-e-cx` dos últimos 7 dias.
+
+**Aberturas obrigatórias:**
+
+Por tipo de cartão (via `cc_recargapay_card_account`):
+- **Garantido** (Standard, Gold, PJ)
+- **Concedido** (Platinum, Black)
+- **Investment** (Titan, Platinum CDB)
+
+Por perfil de cliente: New · NewNew · Repeat
+
+Por tipo de transação Pix (quando relevante):
+- Pix com Wallet vs Pix com Cartão de Crédito (via `flag_pix_cartao`)
+
+**Estrutura do report (Thread 1):**
 
 ```
-foco_periodo: >
-  Esta é a vertical de maior risco no período. O rollout de cashback chega a
-  100% da base em 29/06 — monitorar volume, intenção de cancelamento e NPS
-  com atenção máxima. Os dois bugs de Loans no CC (INC-15244 e INC-15246)
-  ainda estão abertos — verificar se geraram aumento de tickets de "cobrança
-  incorreta" ou "cancelamento sem efeito".
+*📊 Report VoC — Cartão de Crédito · Semana NN*
 
-contexto_estrategico: >
-  NPS do Cartão estava em 53 pts na semana 25 — menor do portfólio. Novas regras
-  de cashback impactaram -14% no spending dos clientes repeat com 62% da base.
-  O parcelamento da fatura foi desligado como medida paliativa em ~06/06 — verificar
-  se voltou ou se ainda gera contatos. Bug de Loans no CC: cancelamento sem baixa
-  de saldo garantido (INC-15244) e falha pós-resgate (INC-15246) — ambos com
-  poucos casos mas sem fix confirmado.
+─────────────────────────────
+*FUNIL DE SUPORTE — CARTÃO DE CRÉDITO*
+[Funil completo]
 
-perguntas_prioritarias:
-  - Volume de intenção de cancelamento/saída cresceu vs semana 25?
-  - Bugs INC-15244 e INC-15246 aparecem nos motivos de contato da semana?
-  - NPS Cartão da semana — abaixo, igual ou acima de 53 pts?
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW)
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+Top motivos:
+• *[motivo 1]:* [N] ([X%]) — [variação WoW + contexto se houver]
+• *[motivo 2]:* [N] ([X%])
+• *[motivo 3]:* [N] ([X%])
+
+Top causas raiz (qualitativo):
+• *[causa 1]:* [problema] | Bot: [Sim/Não]
+• *[causa 2]:* [problema] | Bot: [Sim/Não]
+
+─────────────────────────────
+*ABERTURA POR TIPO DE CARTÃO*
+
+• *Garantido* (Standard/Gold/PJ): [N] tickets ([X%]) | CSAT: [X] | Motivo principal: [motivo]
+• *Concedido* (Platinum/Black): [N] tickets ([X%]) | CSAT: [X] | Motivo principal: [motivo]
+• *Investment* (Titan/Platinum CDB): [N] tickets ([X%]) | CSAT: [X] | Motivo principal: [motivo]
+
+─────────────────────────────
+*PERFIL DOS CLIENTES*
+• New: [N] ([X%]) · NewNew: [N] ([X%]) · Repeat: [N] ([X%])
+
+*PIX — ABERTURA POR ORIGEM* (quando volume relevante)
+• Pix com Wallet: [N] tickets
+• Pix com Cartão: [N] tickets | Motivo principal: [motivo]
+
+─────────────────────────────
+*NPS TRANSACIONAL — CARTÃO* 📊
+*[X pts]* ([+/-X] vs sem. ant.) | Meta: 75
+Últimas 5 semanas: [série]
+• Temas dos detratores por tipo de cartão
+
+─────────────────────────────
+*SPECIAL CASES N2*
+• [N] contatos · Reclame Aqui: [N] · Ouvidoria: [N]
+• Tema predominante: [tema]
+
+─────────────────────────────
+*DESTAQUES DA SEMANA* 💬
+• [temas do canal correlacionados com variações nos dados]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## 🔒 #cx_fraud — Conta Desativada · Carteira Desativada · Chargeback
+## 🔒 #cx_fraud — CONTA DESATIVADA · CARTEIRA DESATIVADA · CHARGEBACK
 
 **Público:** Squad Fraud Operations, Fabio Serra de Abreu e CX  
-**Cadência:** Semanal
+**Formato:** Um report por produto — 3 sets separados no mesmo canal
+
+### Instruções de análise
+
+Ler `#cx_fraud` dos últimos 7 dias para identificar temas ativos.
+Para Conta Desativada e Carteira Desativada, separar por tipo de bloqueio (AUTO vs MANUAL).
+
+**Estrutura padrão por produto:**
 
 ```
-foco_periodo: >
-  Acompanhar evolução do Projeto Carteira Bloqueada — especialmente o tipo
-  Fraud Strategy MANUAL, que concentra o maior CSAT negativo (20% promotores,
-  87% sem desbloqueio previsto na semana 25). Verificar se as ações de comunicação
-  e treinamento (carrossel de 6 slides publicado em jun/26) reduziram derivações
-  incorretas e tempo de resolução. Para Chargeback Recovery, monitorar reflexo
-  do incidente Pix/Elo (180 clientes, R$200K) que está sendo tratado via chargeback.
+*📊 Report VoC — [Conta Desativada / Carteira Desativada / Chargeback] · Semana NN*
 
-contexto_estrategico: >
-  O Fraud Strategy MANUAL é o tipo de bloqueio de maior fricção: clientes sem
-  previsão de desbloqueio e CSAT crítico. O reforço de prazos de tratativa foi
-  publicado pelo Leonardo de Castro em jun/26 — a Routine deve verificar se o
-  volume de contatos por "sem previsão" reduziu. Para Chargeback, o incidente
-  Pix/Elo gerou 180 casos ativos sendo tratados via chargeback bancário —
-  possível entrada de novos tickets se clientes não receberem resolução.
+*FUNIL DE SUPORTE*
+[Funil completo para o produto]
 
-perguntas_prioritarias:
-  - Conta Desativada / Carteira Bloqueada: o CSAT do tipo MANUAL melhorou?
-  - Há redução no motivo "sem previsão de desbloqueio" após o treinamento?
-  - Chargeback Recovery: novos tickets relacionados ao incidente Pix/Elo?
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW)
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+[Para Conta/Carteira Desativada]
+*Abertura por tipo de bloqueio:*
+• *AUTO:* [N] tickets ([X%]) | CSAT: [X] | Motivo: [motivo]
+• *MANUAL:* [N] tickets ([X%]) | CSAT: [X] | Motivo: [motivo]
+
+Top motivos e causas raiz:
+• [top 3 com volume, variação WoW e análise qualitativa]
+
+*PERFIL:* New [X%] · NewNew [X%] · Repeat [X%] | PF [X%] · PJ [X%]
+
+*NPS TRANSACIONAL* 📊
+[Formato padrão com série de 5 semanas]
+
+*SPECIAL CASES N2*
+• [N] contatos · [canais] · Sentimento: [predominante]
+
+*DESTAQUES DA SEMANA* 💬
+• [temas do canal + variações nos dados]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## 📈 #investments-e-cx — CDB · Rendimento CDI · Movimentações
+## 📈 #investments-e-cx — CDB · RENDIMENTO CDI · MOVIMENTAÇÕES FINANCEIRAS
 
 **Público:** Squad Investments e CX  
-**Cadência:** Semanal
+**Formato:** Um report por produto — 3 sets separados
+
+### Instruções de análise
+
+Ler `#investments-e-cx` dos últimos 7 dias.
+
+**Aberturas obrigatórias para CDB:**
+- Por tipo de investimento (se disponível via `dim_investment_lifecycle`)
+- Por faixa de valor investido: até R$1K · R$1K–R$10K · R$10K–R$50K · acima de R$50K
+- Perfil: New · NewNew · Repeat
+
+**Estrutura padrão por produto:**
 
 ```
-foco_periodo: >
-  Monitorar o impacto da mudança de elegibilidade do Rendimento CDI (saldo
-  garantido não utilizado do Cartão não gera mais rendimento a partir de 11/06).
-  Verificar se há aumento de contatos de clientes questionando a mudança ou
-  solicitando resgate de saldo garantido.
+*📊 Report VoC — [CDB / Rendimento CDI / Movimentações] · Semana NN*
 
-contexto_estrategico: >
-  A mudança foi comunicada internamente pela Ingrid Mamolli em 10/06 com pedido
-  de reforço para a operação. Clientes que mantinham saldo garantido parado
-  como "investimento informal" podem perceber a mudança somente ao verificar
-  o extrato — o contato tende a ser defasado (2–4 semanas após a mudança).
+*FUNIL DE SUPORTE*
+[Funil completo]
 
-perguntas_prioritarias:
-  - Há crescimento em contatos relacionados a Rendimento CDI ou saldo garantido?
-  - Qual o sentimento predominante nos tickets de Movimentações Financeiras?
-  - CDB: volume estável ou com variação relevante?
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW)
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+Top motivos e causas raiz:
+• [top 3 com análise qualitativa]
+
+[Para CDB — adicionar]
+*Abertura por faixa de investimento:*
+• Até R$1K: [N] tickets ([X%])
+• R$1K–R$10K: [N] tickets ([X%])
+• R$10K–R$50K: [N] tickets ([X%])
+• Acima de R$50K: [N] tickets ([X%])
+Motivo predominante por faixa quando relevante.
+
+*PERFIL:* New [X%] · NewNew [X%] · Repeat [X%]
+
+*NPS TRANSACIONAL* 📊
+[Formato padrão — 5 semanas]
+Temas dos detratores nas respostas abertas.
+
+*SPECIAL CASES N2*
+• [N] contatos · Sentimento: [predominante]
+
+*DESTAQUES DA SEMANA* 💬
+• [temas do canal + variações]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## 🚌 #melhoria-continua-verticais — Transporte · Boletos · Recarga Celular
+## 🚌 #melhoria-continua-verticais — TRANSPORTE · CONTAS E BOLETOS · BOLETO DE COBRANÇA · RECARGA DE CELULAR
 
-**Público:** Squad responsável pelas verticais de utilidades e CX  
-**Cadência:** Semanal
+**Público:** Squad de verticais de utilidades e CX  
+**Formato:** Um report por produto — 4 sets separados
+
+### Instruções de análise
+
+Ler `#melhoria-continua-verticais` dos últimos 7 dias.
+
+**Aberturas obrigatórias para Transporte:**
+- Por cidade/consórcio (Bilhete Único SP, VEM Recife, Bilhete Único São Luís etc.)
+- Por tipo de problema: validação · recarga · outros
+- Perfil: New · NewNew · Repeat
+
+**Estrutura do report de Transporte:**
 
 ```
-foco_periodo: >
-  Transporte está com crescimento MoM (+19,9% em junho vs maio) e 65% de
-  sentimento negativo — a principal alavanca de melhoria identificada é a
-  automação de "falta de validação no terminal" (37 casos/mês) via bot.
-  Para Recarga de Celular, verificar estabilidade após a instabilidade de
-  integração com o provedor (01/06). Para Contas e Boletos, monitorar
-  sazonalidade de vencimentos quinzenais.
+*📊 Report VoC — Transporte · Semana NN*
 
-contexto_estrategico: >
-  Em Transporte, o problema central (crédito não disponibilizado após validação)
-  depende do SLA dos consórcios parceiros — a alavanca real de CX é reduzir o
-  prazo de retorno do consórcio ou criar notificação proativa ao cliente quando
-  o caso é enviado. O Bilhete Único SP concentra 53% dos casos com entry_reason
-  identificado. Recarga de Celular: integração normalizada desde ~02/06, mas
-  monitorar reincidência.
+*FUNIL DE SUPORTE — TRANSPORTE*
+[Funil completo]
 
-perguntas_prioritarias:
-  - Transporte: o volume da semana mantém tendência de alta ou cedeu?
-  - O motivo "falta de validação no terminal" está reduzindo (candidato a bot)?
-  - Recarga de Celular: algum sinal de nova instabilidade com o provedor?
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW | [+/-X%] vs média 4 sem.)
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+*Abertura por tipo de problema:*
+• Problemas de validação: *[N]* ([X%]) — [consórcio principal]
+• Problemas de recarga: *[N]* ([X%])
+• Outros: *[N]* ([X%])
+
+*Abertura por cidade/consórcio (top 5):*
+• [Consórcio 1]: [N] tickets — Motivo: [motivo]
+• [Consórcio 2]: [N] tickets — Motivo: [motivo]
+[...]
+
+Top causas raiz (qualitativo):
+• *[causa 1]:* [problema] | SLA parceiro: [X dias] | Bot resolve? [Sim/Não]
+• *[causa 2]:* [problema]
+
+*PERFIL:* New [X%] · NewNew [X%] · Repeat [X%]
+
+*NPS TRANSACIONAL* 📊
+[Formato padrão — 5 semanas]
+
+*SPECIAL CASES N2*
+• [N] contatos · Sentimento: [predominante]
+
+*DESTAQUES DA SEMANA* 💬
+• [temas do canal + variações]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+**Para Contas e Boletos, Boleto de Cobrança e Recarga de Celular:** usar estrutura padrão
+de produto sem as aberturas específicas de Transporte.
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## ⚡ #pixcc-home-raf-cx — Pix · Pix CC · RAF
+## ⚡ #pixcc-home-raf-cx — PIX · PIX CC · RAF
 
 **Público:** Squad Pix, Pix CC, RAF e CX  
-**Cadência:** Semanal
+**Formato:** Um report por produto — 3 sets separados
+
+### Instruções de análise
+
+Ler `#pixcc-home-raf-cx` dos últimos 7 dias.
+
+**Aberturas obrigatórias para Pix:**
+- Pix com Wallet vs Pix com Cartão de Crédito (via `flag_pix_cartao`)
+- Por subtipo: Pix In · Pix Out · Chaves Pix
+- Perfil: New · NewNew · Repeat
+
+**Estrutura do report de Pix:**
 
 ```
-foco_periodo: >
-  Pix está em estabilização pós-BTG (semana 24 foi o pico). Verificar se o
-  volume voltou à média pré-incidente. Para Pix CC, monitorar reflexo da
-  Collateral Wallet — clientes com empréstimo debitado da carteira que tentam
-  fazer Pix e encontram saldo insuficiente. Para RAF, acompanhar impacto da
-  mudança de 08/06 (indicado não recebe mais o bônus de R$20 — apenas o
-  indicador ganha o prêmio).
+*📊 Report VoC — Pix · Semana NN*
 
-contexto_estrategico: >
-  O incidente BTG (3 episódios entre 08–12/06) causou o pico de atendimento
-  da semana 24. A estabilização está confirmada, mas verificar se há tickets
-  residuais de clientes que não receberam restituição de transações falhas.
-  RAF: a mudança de 08/06 foi comunicada pela Mirela Dantas com materiais
-  atualizados — possível aumento de contatos de indicados que esperavam o
-  bônus de R$20 e não receberam.
+*FUNIL DE SUPORTE — PIX*
+[Funil completo]
 
-perguntas_prioritarias:
-  - Pix: volume voltou à média pré-BTG (antes de 08/06)?
-  - Há tickets residuais do incidente BTG (transações não entregues/restituídas)?
-  - RAF: crescimento de contatos após a mudança do bônus do indicado?
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW)
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+*Abertura por subtipo:*
+• Pix Out: [N] ([X%]) | Pix In: [N] ([X%]) | Chaves: [N] ([X%])
+
+*Abertura por origem do Pix:*
+• Pix com Wallet: [N] tickets
+• Pix com Cartão (CC): [N] tickets
+
+Top motivos e causas raiz:
+• [top 3 com análise qualitativa e flag Bot/Humano]
+
+*PERFIL:* New [X%] · NewNew [X%] · Repeat [X%]
+
+*NPS TRANSACIONAL — PIX* 📊
+[Formato padrão — 5 semanas]
+Temas dos detratores.
+
+*SPECIAL CASES N2*
+• [N] contatos · Sentimento: [predominante]
+
+*DESTAQUES DA SEMANA* 💬
+• [temas do canal + variações]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+**Para Pix CC e RAF:** usar estrutura padrão de produto sem a abertura de subtipo de Pix.
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## 💰 #squad_loan_seguimento — Empréstimo · Crédito Consignado
+## 💰 #squad_loan_seguimento — EMPRÉSTIMO · CRÉDITO CONSIGNADO
 
 **Público:** Squad Lending e CX  
-**Cadência:** Semanal
+**Formato:** Report de produto com abertura por perfil e comportamento de inadimplência
+
+### Instruções de análise
+
+Ler `#squad_loan_seguimento` dos últimos 7 dias.
+
+**Aberturas obrigatórias:**
+- Perfil: New · NewNew · Repeat
+- Por tipo de produto: Empréstimo Pessoal vs Crédito Consignado
+- Collateral Wallet: separar contatos relacionados a débito automático quando relevante
+
+**Estrutura do report (Thread 1):**
 
 ```
-foco_periodo: >
-  Dois clusters emergentes que precisam de acompanhamento semanal:
-  (1) dívidas vendidas para cessão — clientes questionando Registrato/BACEN
-  após quitação com cessionário (11 casos na semana 26, não estava no top 20
-  anterior); (2) bugs em Loans no CC (INC-15244 e INC-15246 — sem fix confirmado).
-  Para Consignado, monitorar volume de dúvidas após a expansão da política
-  RNN Simplificada para todos os segmentos em 03/06.
+*📊 Report VoC — Empréstimo · Semana NN*
 
-contexto_estrategico: >
-  A Collateral Wallet (Dreno Automático) foi ativada em 17/06 para inadimplentes
-  de Empréstimo — o pico de contatos da semana 25 está cedendo, mas verificar
-  se a curva segue descendente. O cluster de dívida cedida/Registrato é novo
-  e regulatório — clientes com intenção de ação judicial e prazo de remoção
-  de 20–40 dias (ciclo BACEN). Comunicação proativa inexistente — oportunidade
-  de melhoria de jornada.
+*FUNIL DE SUPORTE — EMPRÉSTIMO*
+[Funil completo]
 
-perguntas_prioritarias:
-  - Collateral Wallet: o volume de "empréstimo debitado da carteira" está caindo?
-  - Cluster de dívida cedida/Registrato cresceu ou estabilizou vs semana 26?
-  - Bugs INC-15244 e INC-15246 aparecem nos motivos de contato?
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW)
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+*Abertura por produto:*
+• Empréstimo Pessoal: [N] ([X%]) | Motivo principal: [motivo]
+• Crédito Consignado: [N] ([X%]) | Motivo principal: [motivo]
+
+Top motivos e causas raiz:
+• [top 3 com análise qualitativa]
+
+*PERFIL:* New [X%] · NewNew [X%] · Repeat [X%]
+
+*NPS TRANSACIONAL* 📊
+[Formato padrão — 5 semanas]
+Temas dos detratores nas respostas abertas.
+
+*SPECIAL CASES N2*
+• [N] contatos · Canais regulatórios: [N] · Sentimento: [predominante]
+
+*DESTAQUES DA SEMANA* 💬
+• [temas do canal + variações]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## 🏪 #subacquirer-cx — Tap to Pay · Link de Pagamento
+## 🏪 #subacquirer-cx — TAP TO PAY · LINK DE PAGAMENTO
 
 **Público:** Squad Subadquirente e CX  
-**Cadência:** Semanal
+**Formato:** Um report por produto — 2 sets separados
+
+### Instruções de análise
+
+Ler `#subacquirer-cx` dos últimos 7 dias.
+Atenção ao perfil PJ — lojistas têm padrão de contato distinto de clientes PF.
+
+**Estrutura padrão por produto:**
 
 ```
-foco_periodo: >
-  Monitorar impacto do bloqueio anti-spam da VIVO no C2C de suporte ao lojista
-  (Tap to Pay e Link de Pagamento têm perfil PJ mais elevado — ligações de
-  suporte ao estabelecimento são críticas). Verificar se há crescimento em
-  contatos de lojistas que não receberam ligação de retorno.
+*📊 Report VoC — [Tap to Pay / Link de Pagamento] · Semana NN*
 
-contexto_estrategico: >
-  O anti-spam da VIVO impacta 57,5% das ligações para clientes da operadora —
-  lojistas PJ Ouro e Prata usam linhas corporativas que frequentemente são da
-  VIVO ou de operadoras com políticas similares. O canal de e-mail pode estar
-  absorvendo os contatos que antes eram resolvidos por C2C. Para Link de
-  Pagamento, monitorar sazonalidade de fim de mês (cobranças e liquidações).
+*FUNIL DE SUPORTE*
+[Funil completo]
 
-perguntas_prioritarias:
-  - Tap to Pay: crescimento de contatos via e-mail (possível migração do C2C)?
-  - Perfil PJ Ouro/Prata está acima do normal em algum produto?
-  - Link de Pagamento: alguma variação relevante no encerramento do mês?
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW)
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+Top motivos e causas raiz:
+• [top 3 com análise qualitativa]
+
+*PERFIL:* PF [X%] · PJ [X%] (PJ Ouro [X%] · PJ Prata [X%])
+New [X%] · NewNew [X%] · Repeat [X%]
+
+*NPS TRANSACIONAL* 📊
+[Formato padrão — 5 semanas]
+
+*SPECIAL CASES N2*
+• [N] contatos · Sentimento: [predominante]
+
+*DESTAQUES DA SEMANA* 💬
+• [temas do canal + variações]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+```
+
+```
+contexto_pontual: ""
 ```
 
 ---
 
-## Como editar este arquivo
+## REGRAS GLOBAIS DE ANÁLISE
 
-**Ciclo recomendado:**
-1. Todo domingo à tarde, antes da Routine rodar na segunda às 08h BRT
-2. Revisar os campos `foco_periodo` e `contexto_estrategico` de cada canal
-3. Atualizar `perguntas_prioritarias` com base nos alertas da semana anterior
-4. Fazer commit no repositório GitHub — a Routine já usa a versão mais recente
+### O que sempre fazer
+- Identificar temas automaticamente pelos dados e pelo Slack — nunca inventar
+- Comparar com 5 semanas anteriores em todos os indicadores (NPS, CSAT, volume, retenção)
+- Correlacionar variações com eventos, ações e incidentes identificados no Slack
+- Negritir números-chave, nomes de indicadores e alertas
+- Omitir seções sem dados calculados — sem mensagem de erro ou indisponibilidade
+- Separar rigorosamente N1, Bot retido, N2 e derivações em todas as contagens
 
-**Dicas de edição:**
-- `foco_periodo`: 2–4 linhas. O que o Claude deve prestar atenção especial esta semana.
-- `contexto_estrategico`: fatos concretos (números, datas, nomes de iniciativas). O Claude usa isso para contextualizar variações de volume ou CSAT que seriam interpretadas como anomalia sem o contexto.
-- `perguntas_prioritarias`: máximo 3 perguntas. Se uma pergunta não tiver resposta nos dados, o Claude indica explicitamente.
+### O que nunca fazer
+- Mostrar tabelas markdown (quebram na janela lateral do Slack)
+- Expor tags, IDs de campo ou nomes de tabelas nos reports enviados
+- Exibir "⚠️ indisponível" — simplesmente omitir a seção
+- Inventar correlações sem base nos dados ou no Slack
+- Misturar volumes de N1, Bot e N2 sem separação explícita
 
-**Quando deixar em branco:**
-Semanas sem mudanças relevantes de estratégia ou produto, deixar os campos em branco.
-A Routine usa o template padrão — funciona bem para semanas "normais".
-
-**Quem mantém:**
-Artur Nunes (artur.nunes@recargapay.com) — com inputs do Anderson Fernandes
-e dos DRIs de cada squad quando houver contexto relevante de produto.
+### Thresholds de alerta (disparar 🔴)
+- Volume N1 fora do padrão: >30% vs média 4 semanas
+- Pico em vertical ou motivo: >20% WoW (report geral) ou >30% WoW (report de produto)
+- Novo cluster emergente: motivo não estava no top 10, chegou ao top 3
+- CSAT Atendimento abaixo de 75% de satisfeitos
+- NPS Transacional abaixo de 55 pts em qualquer produto
+- Retenção de Bot abaixo de 45%
+- Canal regulatório (Ouvidoria, Consumidor.gov, BACEN) acima da média histórica
