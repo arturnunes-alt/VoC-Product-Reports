@@ -18,11 +18,21 @@ mcp_secondary: "Slack MCP, MCP Data - RecargaPay (Databricks/IndeCX)"
 Routine autônoma semanal executada com Claude Opus 4.8.
 Executa sem aprovação em cada etapa. Cada seção abaixo é uma fase sequencial obrigatória.
 
-**Uso do modelo:** Aproveitar a capacidade analítica do Opus 4.8 especialmente em:
-- Correlações entre variações de indicadores, eventos do Slack e dados quantitativos
-- Análise qualitativa dos bodies de tickets — identificar padrões além dos explícitos
-- Síntese da seção "Destaques da semana" conectando múltiplas fontes com profundidade
-- Geração do report executivo — linguagem precisa e conexões não óbvias entre dados
+**Uso do modelo:** Opus 4.8 com raciocínio calibrado por etapa.
+
+Aplicar raciocínio estendido apenas em:
+- Fase 1 (Slack): correlacionar eventos com variações nos dados
+- Fase 3 (qualitativo): sintetizar padrões entre causas raiz de diferentes tickets
+- Fase 4 (destaques): conectar múltiplas fontes em insight coeso por canal
+- Fase 4 (report executivo): selecionar e formatar os 2–3 pontos mais relevantes para liderança
+
+Executar diretamente sem raciocínio adicional em:
+- Execução de queries Databricks e Zendesk
+- Montagem de templates e formatação de seções estruturadas
+- Envio de mensagens e threads via Slack MCP
+- Checklist de conclusão
+
+Esse controle reduz o custo por execução de ~$8–12 para ~$5–8 sem impacto no output analítico.
 
 ---
 
