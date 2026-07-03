@@ -10,7 +10,8 @@
       {
         "nome": "Central de Ajuda",
         "fonte": "prod.cx.fat_help_center_events ou Amplitude",
-        "filtro": "acessos a artigos — excluir bots e automações internas"
+        "filtro": "segmentar sempre por event_category: 'artigo' (top artigos), 'vertical' (gap de conteudo), 'pesquisa' (termos buscados), 'ajuda' (volume topo do funil)",
+        "coluna_vertical": "coluna propria 'vertical' -- independente do event_category"
       },
       {
         "nome": "RecargaBot",
