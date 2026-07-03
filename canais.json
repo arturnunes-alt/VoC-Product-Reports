@@ -41,15 +41,21 @@
       "promotores": ">=9",
       "detratores": "<=6",
       "metrica_indecx": "nps-0-10",
-      "historico_semanas": 5
+      "historico_semanas": 5,
+      "fonte_oficial": "prod.cx.agg_overview (metric='nps tx')",
+      "fonte_verbatims": "API IndeCX"
     },
     "nps_relacional": {
       "meta": 50,
       "escala": "0-10",
       "promotores": ">=9",
       "detratores": "<=6",
-      "segmentacao": ["PF", "PJ"],
-      "historico_semanas": 5
+      "segmentacao": [
+        "PF",
+        "PJ"
+      ],
+      "historico_semanas": 5,
+      "fonte_oficial": "API IndeCX (unica fonte disponivel)"
     },
     "csat_n1": {
       "meta_pct_satisfeitos": 80,
@@ -58,14 +64,18 @@
       "insatisfeitos": "<=2",
       "metrica_indecx": "csat-1-5",
       "filtro_join": "flg_human = true",
-      "historico_semanas": 5
+      "historico_semanas": 5,
+      "fonte_resolutividade": "API IndeCX (additionalQuestions)",
+      "fonte_oficial": "prod.cx.agg_overview (metric='csat')"
     },
     "csat_bot": {
       "meta_pct_satisfeitos": 80,
       "escala": "1-5",
       "metrica_indecx": "csat-1-5",
       "filtro_join": "flg_retention_bot = true",
-      "historico_semanas": 5
+      "historico_semanas": 5,
+      "fonte_resolutividade": "API IndeCX (additionalQuestions)",
+      "fonte_oficial": "prod.cx.agg_overview (metric='csat', flg_retention_bot=true)"
     },
     "retencao_bot": {
       "descricao": "% contatos retidos pelo bot sem transbordo para humano",
@@ -90,7 +100,10 @@
   "canais": [
     {
       "slack_channel": "#the-cxm-house",
-      "slack_channel_leitura": ["#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "geral",
       "nome_report": "Report VoC",
       "verticais": "TODAS",
@@ -101,7 +114,10 @@
     },
     {
       "slack_channel": "#lideres-cx-e-cxm",
-      "slack_channel_leitura": ["#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "executivo",
       "nome_report": "Report VoC",
       "verticais": "TODAS",
@@ -113,155 +129,318 @@
     },
     {
       "slack_channel": "#account_cx",
-      "slack_channel_leitura": ["#account_cx", "#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#account_cx",
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "produto",
       "nome_report": "Report de VoC - Minha Conta",
-      "verticais": ["Minha Conta"],
-      "tags_zendesk": ["minha_conta", "minha_conta_logado"],
-      "aberturas_especificas": ["perfil_new_newnew_repeat", "pf_pj"]
+      "verticais": [
+        "Minha Conta"
+      ],
+      "tags_zendesk": [
+        "minha_conta",
+        "minha_conta_logado"
+      ],
+      "aberturas_especificas": [
+        "perfil_new_newnew_repeat",
+        "pf_pj"
+      ]
     },
     {
       "slack_channel": "#cc-produto-e-cx",
-      "slack_channel_leitura": ["#cc-produto-e-cx", "#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#cc-produto-e-cx",
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "produto",
       "nome_report": "Report de VoC - Cartao de Credito",
-      "verticais": ["Cartao de Credito"],
-      "tags_zendesk": ["cartao_de_credito_da_recargapay"],
-      "aberturas_especificas": ["tipo_cartao_garantido_concedido_investment", "perfil_new_newnew_repeat", "pix_wallet_vs_cartao"]
+      "verticais": [
+        "Cartao de Credito"
+      ],
+      "tags_zendesk": [
+        "cartao_de_credito_da_recargapay"
+      ],
+      "aberturas_especificas": [
+        "tipo_cartao_garantido_concedido_investment",
+        "perfil_new_newnew_repeat",
+        "pix_wallet_vs_cartao"
+      ]
     },
     {
       "slack_channel": "#cx_fraud",
-      "slack_channel_leitura": ["#cx_fraud", "#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#cx_fraud",
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "produto_multiplo",
       "produtos": [
         {
           "nome_report": "Report de VoC - Conta Desativada",
-          "verticais": ["Conta Desativada"],
-          "tags_zendesk": ["conta_desativada"],
-          "aberturas_especificas": ["tipo_bloqueio_auto_manual", "perfil_new_newnew_repeat"]
+          "verticais": [
+            "Conta Desativada"
+          ],
+          "tags_zendesk": [
+            "conta_desativada"
+          ],
+          "aberturas_especificas": [
+            "tipo_bloqueio_auto_manual",
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Carteira Desativada",
-          "verticais": ["Carteira Desativada"],
-          "tags_zendesk": ["carteira_desativada"],
-          "aberturas_especificas": ["tipo_bloqueio_auto_manual", "perfil_new_newnew_repeat"]
+          "verticais": [
+            "Carteira Desativada"
+          ],
+          "tags_zendesk": [
+            "carteira_desativada"
+          ],
+          "aberturas_especificas": [
+            "tipo_bloqueio_auto_manual",
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Chargeback Recovery",
-          "verticais": ["Chargeback Recovery"],
-          "tags_zendesk": ["chargeback_recovery_vertical"],
-          "aberturas_especificas": ["perfil_new_newnew_repeat"]
+          "verticais": [
+            "Chargeback Recovery"
+          ],
+          "tags_zendesk": [
+            "chargeback_recovery_vertical"
+          ],
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
         }
       ]
     },
     {
       "slack_channel": "#investments-e-cx",
-      "slack_channel_leitura": ["#investments-e-cx", "#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#investments-e-cx",
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "produto_multiplo",
       "produtos": [
         {
           "nome_report": "Report de VoC - CDB",
-          "verticais": ["CDB"],
-          "tags_zendesk": ["cdb"],
-          "aberturas_especificas": ["faixa_valor_investido", "tipo_investimento", "perfil_new_newnew_repeat"]
+          "verticais": [
+            "CDB"
+          ],
+          "tags_zendesk": [
+            "cdb"
+          ],
+          "aberturas_especificas": [
+            "faixa_valor_investido",
+            "tipo_investimento",
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Rendimento CDI",
-          "verticais": ["Rendimento CDI"],
-          "tags_zendesk": ["rendimento_cdi"],
-          "aberturas_especificas": ["perfil_new_newnew_repeat"]
+          "verticais": [
+            "Rendimento CDI"
+          ],
+          "tags_zendesk": [
+            "rendimento_cdi"
+          ],
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Movimentacoes Financeiras",
-          "verticais": ["Movimentacoes Financeiras"],
-          "tags_zendesk": ["movimentacoes_financeiras"],
-          "aberturas_especificas": ["perfil_new_newnew_repeat"]
+          "verticais": [
+            "Movimentacoes Financeiras"
+          ],
+          "tags_zendesk": [
+            "movimentacoes_financeiras"
+          ],
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
         }
       ]
     },
     {
       "slack_channel": "#melhoria-continua-verticais",
-      "slack_channel_leitura": ["#melhoria-continua-verticais", "#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#melhoria-continua-verticais",
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "produto_multiplo",
       "produtos": [
         {
           "nome_report": "Report de VoC - Transporte",
-          "verticais": ["Transporte"],
-          "tags_zendesk": ["transporte_vertical"],
-          "aberturas_especificas": ["cidade_consorcio", "tipo_problema_validacao_recarga", "perfil_new_newnew_repeat"]
+          "verticais": [
+            "Transporte"
+          ],
+          "tags_zendesk": [
+            "transporte_vertical"
+          ],
+          "aberturas_especificas": [
+            "cidade_consorcio",
+            "tipo_problema_validacao_recarga",
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Contas e Boletos",
-          "verticais": ["Contas e Boletos"],
-          "tags_zendesk": ["contas_e_boletos_"],
-          "aberturas_especificas": ["perfil_new_newnew_repeat"]
+          "verticais": [
+            "Contas e Boletos"
+          ],
+          "tags_zendesk": [
+            "contas_e_boletos_"
+          ],
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Boleto de Cobranca",
-          "verticais": ["Boleto de Cobranca"],
-          "tags_zendesk": ["boleto_de_cobranca"],
-          "aberturas_especificas": ["perfil_new_newnew_repeat"]
+          "verticais": [
+            "Boleto de Cobranca"
+          ],
+          "tags_zendesk": [
+            "boleto_de_cobranca"
+          ],
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Recarga de Celular",
-          "verticais": ["Recarga de Celular"],
-          "tags_zendesk": ["recarga_de_celular_vertical"],
-          "aberturas_especificas": ["perfil_new_newnew_repeat"]
+          "verticais": [
+            "Recarga de Celular"
+          ],
+          "tags_zendesk": [
+            "recarga_de_celular_vertical"
+          ],
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
         }
       ]
     },
     {
       "slack_channel": "#pixcc-home-raf-cx",
-      "slack_channel_leitura": ["#pixcc-home-raf-cx", "#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#pixcc-home-raf-cx",
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "produto_multiplo",
       "produtos": [
         {
           "nome_report": "Report de VoC - Pix",
-          "verticais": ["Pix In", "Pix Out", "Chaves Pix"],
-          "tags_zendesk": ["pix-in", "pix-out", "pix-chaves_pix"],
+          "verticais": [
+            "Pix In",
+            "Pix Out",
+            "Chaves Pix"
+          ],
+          "tags_zendesk": [
+            "pix-in",
+            "pix-out",
+            "pix-chaves_pix"
+          ],
           "nota": "Usar tags em OR — nao somar queries separadas",
-          "aberturas_especificas": ["pix_in_out_chaves", "pix_wallet_vs_cartao", "perfil_new_newnew_repeat"]
+          "aberturas_especificas": [
+            "pix_in_out_chaves",
+            "pix_wallet_vs_cartao",
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Pix CC",
-          "verticais": ["Pix CC"],
-          "tags_zendesk": ["CONFIRMAR_TAG_PIX_CC"],
+          "verticais": [
+            "Pix CC"
+          ],
+          "tags_zendesk": [
+            "CONFIRMAR_TAG_PIX_CC"
+          ],
           "nota": "Validar tag com query exploratoria antes de usar",
-          "aberturas_especificas": ["perfil_new_newnew_repeat"]
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - RAF",
-          "verticais": ["RAF Indicado", "RAF Indicador"],
-          "tags_zendesk": ["raf-indicado", "raf-indicador"],
-          "aberturas_especificas": ["perfil_new_newnew_repeat"]
+          "verticais": [
+            "RAF Indicado",
+            "RAF Indicador"
+          ],
+          "tags_zendesk": [
+            "raf-indicado",
+            "raf-indicador"
+          ],
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
         }
       ]
     },
     {
       "slack_channel": "#squad_loan_seguimento",
-      "slack_channel_leitura": ["#squad_loan_seguimento", "#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#squad_loan_seguimento",
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "produto",
       "nome_report": "Report de VoC - Emprestimo",
-      "verticais": ["Emprestimo", "Credito Consignado"],
-      "tags_zendesk": ["emprestimo_", "emprestimo_credito_consignado"],
-      "aberturas_especificas": ["emprestimo_pessoal_vs_consignado", "perfil_new_newnew_repeat"]
+      "verticais": [
+        "Emprestimo",
+        "Credito Consignado"
+      ],
+      "tags_zendesk": [
+        "emprestimo_",
+        "emprestimo_credito_consignado"
+      ],
+      "aberturas_especificas": [
+        "emprestimo_pessoal_vs_consignado",
+        "perfil_new_newnew_repeat"
+      ]
     },
     {
       "slack_channel": "#subacquirer-cx",
-      "slack_channel_leitura": ["#subacquirer-cx", "#lideres-cx-e-cxm", "#comunicados_e_atualizações_cx"],
+      "slack_channel_leitura": [
+        "#subacquirer-cx",
+        "#lideres-cx-e-cxm",
+        "#comunicados_e_atualizações_cx"
+      ],
       "tipo": "produto_multiplo",
       "produtos": [
         {
           "nome_report": "Report de VoC - Tap to Pay",
-          "verticais": ["Tap to Pay"],
-          "tags_zendesk": ["tap_to_pay"],
-          "aberturas_especificas": ["pf_pj_ouro_prata", "perfil_new_newnew_repeat"]
+          "verticais": [
+            "Tap to Pay"
+          ],
+          "tags_zendesk": [
+            "tap_to_pay"
+          ],
+          "aberturas_especificas": [
+            "pf_pj_ouro_prata",
+            "perfil_new_newnew_repeat"
+          ]
         },
         {
           "nome_report": "Report de VoC - Link de Pagamento",
-          "verticais": ["Link de Pagamento"],
-          "tags_zendesk": ["link_de_pagamento"],
-          "aberturas_especificas": ["pf_pj_ouro_prata", "perfil_new_newnew_repeat"]
+          "verticais": [
+            "Link de Pagamento"
+          ],
+          "tags_zendesk": [
+            "link_de_pagamento"
+          ],
+          "aberturas_especificas": [
+            "pf_pj_ouro_prata",
+            "perfil_new_newnew_repeat"
+          ]
         }
       ]
     }
@@ -276,5 +455,17 @@
     "retencao_bot_minimo_pct": 45,
     "canal_regulatorio_acima_media": true
   },
-  "hub_voc_url": "https://sites.google.com/recargapay.com/voc/"
+  "hub_voc_url": "https://sites.google.com/recargapay.com/voc/",
+  "api_indecx": {
+    "descricao": "Chamada HTTP direta (nao e MCP) para enriquecimento qualitativo de NPS/CSAT",
+    "env_var_obrigatoria": "INDECX_COMPANY_KEY",
+    "usar_para": [
+      "resolutividade_csat_n1",
+      "resolutividade_csat_bot",
+      "verbatims_nps_detratores",
+      "nps_relacional_pf_pj"
+    ],
+    "cross_check_threshold_pct": 10,
+    "referencia": "skill-indecx-api.md"
+  }
 }
