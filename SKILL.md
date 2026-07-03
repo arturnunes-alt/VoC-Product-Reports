@@ -5,8 +5,8 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "1.1"
-model: "claude-opus-4-8"
+version: "1.2"
+model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
 mcp_primary: "[TEST] MCP Gateway AWS AgentCore (zendesk)"
@@ -15,24 +15,26 @@ mcp_secondary: "Slack MCP, MCP Data - RecargaPay (Databricks/IndeCX)"
 
 # VoC Report Automation — RecargaPay
 
-Routine autônoma semanal executada com Claude Opus 4.8.
+Routine autônoma semanal executada com Claude Sonnet 5.
 Executa sem aprovação em cada etapa. Cada seção abaixo é uma fase sequencial obrigatória.
 
-**Uso do modelo:** Opus 4.8 com raciocínio calibrado por etapa.
+**Arquivos de skill obrigatórios — ler na Fase 0:**
+- `SKILL.md` — este arquivo (lógica de execução)
+- `canais.json` — mapeamento canal → vertical → tags → aberturas
+- `orientacoes-editoriais.md` — instruções de análise por canal
+- `skill-databricks-mcp.md` — tabelas e queries Databricks complementares
+- `skill-zendesk-cx.md` — **protocolo completo de queries Zendesk e métricas CX** (ler antes de qualquer query)
+- `skill-indecx-api.md` — **acesso direto à API IndeCX** para Resolutividade, verbatims e NPS Relacional PF/PJ
 
-Aplicar raciocínio estendido apenas em:
-- Fase 1 (Slack): correlacionar eventos com variações nos dados
-- Fase 3 (qualitativo): sintetizar padrões entre causas raiz de diferentes tickets
-- Fase 4 (destaques): conectar múltiplas fontes em insight coeso por canal
-- Fase 4 (report executivo): selecionar e formatar os 2–3 pontos mais relevantes para liderança
+**Uso do modelo:** Claude Sonnet 5 — rápido e eficiente para o perfil desta Routine
+(fases estruturadas com instruções explícitas). Não requer calibração de raciocínio
+estendido por etapa; o modelo já executa com boa relação custo/qualidade em todas as fases,
+das queries mecânicas às correlações analíticas.
 
-Executar diretamente sem raciocínio adicional em:
-- Execução de queries Databricks e Zendesk
-- Montagem de templates e formatação de seções estruturadas
-- Envio de mensagens e threads via Slack MCP
-- Checklist de conclusão
-
-Esse controle reduz o custo por execução de ~$8–12 para ~$5–8 sem impacto no output analítico.
+Se em algum momento a profundidade analítica das correlações (Fase 1, Fase 3 qualitativo,
+Fase 4 destaques e report executivo) precisar de mais nuance do que o Sonnet 5 entrega,
+considerar trocar o modelo pontualmente para Claude Opus via "Run now" com o modelo
+alterado, sem precisar mudar a configuração padrão da Routine.
 
 ---
 
@@ -136,7 +138,9 @@ query — contém tabelas, campos, flags e queries padrão prontas para uso.
 
 ### 2A — Volume N1 (atendimento humano)
 Query base: `dim_zendesk_tickets_summary` + JOIN `fat_tickets_transcription_summary`.
-Filtros N1: `flg_human = true`, `flg_invalid_bot = false`, `flg_retention_bot = false`, `key_channel NOT LIKE '%deriva%'`.
+Filtros N1 (DaaP): `flg_human = true`, `flg_invalid_bot = false`, `flg_retention_bot = false`,
+`friendly_service_channel <> 'derivacao'`, `flg_duplicate = false`.
+⛔ Nunca usar `key_channel NOT LIKE '%deriva%'` no DaaP — padrão descontinuado.
 Usar `customer_issue`, `customer_complaint`, `human_vs_bot_diff` para qualitativo em escala.
 
 ### 2B — Volume Bot retido (RecargaBot)
@@ -152,42 +156,41 @@ Fonte: `prod.cx.fat_help_center_events` (ou Amplitude quando disponível).
 Extrair: total de acessos, top artigos por volume, % que avançou para bot ou automações.
 
 ### 2E — CSAT Atendimento N1
-Query: `fat_indecx_metrics` WHERE `metric = 'csat-1-5'` + JOIN com tickets N1.
-Extrair: % satisfeitos (nota>=4), % insatisfeitos (nota<=2), % resolutividade, série 5 semanas.
-Meta: 80% satisfeitos.
+**Fonte primária (número oficial):** `prod.cx.agg_overview` WHERE `metric = 'csat'`
+AND `friendly_service_channel IN ('c2c', 'chat online', 'e-mail')`.
+Ver SQL completo em `skill-zendesk-cx.md` §3 (CX-002).
+**Enriquecimento (Resolutividade):** API IndeCX — ver `skill-indecx-api.md` §7.
+Meta: 80% satisfeitos. Série 5 semanas por vertical.
 
 ### 2F — CSAT RecargaBot
-Query: `fat_indecx_metrics` WHERE `metric = 'csat-1-5'` + JOIN com `flg_retention_bot = true`.
+**Fonte primária:** `prod.cx.agg_overview` WHERE `metric = 'csat'` AND `flg_retention_bot = true`.
+**Enriquecimento (Resolutividade):** API IndeCX — ver `skill-indecx-api.md` §7.
 Extrair: % satisfeitos, % resolutividade, série 5 semanas. Meta: 80%.
 
 ### 2G — NPS Transacional por vertical
-Query: `fat_indecx_metrics` WHERE `metric = 'nps-0-10'`.
-Calcular: % promotores (>=9), % detratores (<=6), NPS score = promotores - detratores.
-Deduplicar por `ROW_NUMBER() OVER (PARTITION BY id_ticket ORDER BY answer_date DESC)`.
-Meta: 75 pts. Série 5 semanas por produto.
+**Fonte primária (número oficial):** `prod.cx.agg_overview` WHERE `metric = 'nps tx'`.
+Calcular via `promoter_like_count`, `detractor_dislike_count`, `neutral_count`.
+Ver SQL completo em `skill-zendesk-cx.md` §3 (CX-001).
+**Enriquecimento (verbatims dos detratores):** API IndeCX — ver `skill-indecx-api.md` §5 e §9.
+Extrair até 3 verbatims representativos por produto para a seção qualitativa do report.
+Meta: 75 pts. Série 5 semanas. Vertical em `agg_overview` sem acentuação.
 
 ### 2H — NPS Relacional (Report Geral e Executivo apenas)
-Query: `fat_indecx_metrics` com métrica de NPS Relacional (confirmar nome no schema).
-Segmentar PF vs PJ separadamente. Extrair menções a produtos nos feedbacks abertos.
+**Fonte primária e única:** API IndeCX — ver `skill-indecx-api.md` §6.
+Segmentar PF vs PJ pelo nome da ação (`ACOES_PF` / `ACOES_PJ`).
+Extrair menções a produtos nos feedbacks abertos via `ACAO_MAP` aplicado ao texto do feedback.
 Meta: 50 pts. Série 5 semanas.
 
-### Preferência de fonte por tipo de análise
-| Análise | Fonte |
-|---|---|
-| Volume N1, Bot retido, N2 | Databricks `dim_zendesk_tickets_summary` |
-| CSAT N1 e CSAT Bot | Databricks `fat_indecx_metrics` (`csat-1-5`) |
-| NPS Transacional | Databricks `fat_indecx_metrics` (`nps-0-10`) |
-| NPS Relacional | Databricks `fat_indecx_metrics` (métrica relacional) |
-| Retenção de Bot | Databricks `dim_zendesk_tickets_summary` (flags) |
-| Central de Ajuda | Databricks `fat_help_center_events` ou Amplitude |
-| Qualitativo em escala (>50 tickets) | Databricks `fat_tickets_transcription_summary` |
-| Qualitativo pontual (3–5 tickets) | Zendesk MCP `get_ticket` |
-| Motivo de contato / Causa raiz precisa | Zendesk MCP campos 23294051472659 / 23570792097683 |
-| Perfil New/NewNew/Repeat | Databricks `fat_user_data` + `clo_orders` |
-| Tipo de cartão CC | Databricks `cc_recargapay_card_account` |
-| Faixa de investimento CDB | Databricks `dim_investment_lifecycle` |
+### 2I — Contact Rate e HCE (Report Geral)
+**Fonte:** `prod.cx.agg_overview` WHERE `metric IN ('contact rate', 'hce', 'nfhr')`.
+NFHR e Contact Rate usam `tx` (transações) como denominador — não `au` (active users).
+Ver SQL em `skill-zendesk-cx.md` §3 (CX-007 e CX-008).
 
-**Se Databricks indisponível:** omitir NPS, CSAT, Retenção de Bot, perfil e funil da Central de Ajuda.
+### 2J — Cross-check API IndeCX vs Databricks
+Se o NPS/CSAT calculado via API IndeCX divergir >10% do valor em `agg_overview`,
+sinalizar internamente e usar sempre o `agg_overview` como número oficial no report.
+Se a API IndeCX estiver indisponível: omitir Resolutividade, verbatims e NPS Relacional —
+os números headline de NPS/CSAT continuam disponíveis via `agg_overview`.
 
 ---
 
@@ -252,8 +255,8 @@ Se `truncated: true`, refinar por subperíodo ou sub-tag.
 5. Distribuição de canal de entrada (Chat, C2C, E-mail, canais regulatórios) 🔍
 
 **Análise qualitativa (top 3 causas raiz por vertical via Zendesk MCP):**
-Ler ao menos 5 tickets representativos por causa raiz — aproveitar a capacidade do Opus 4.8
-para síntese qualitativa mais profunda do que seria possível com uma amostra menor.
+Ler ao menos 3 tickets representativos por causa raiz — amostra padrão para o Sonnet 5
+(ampliar para 5 pontualmente se a causa raiz tiver alta variabilidade de relatos).
 Priorizar: sentimento negativo > canais regulatórios > cronológico reverso.
 
 Para cada causa raiz, extrair e sintetizar:
