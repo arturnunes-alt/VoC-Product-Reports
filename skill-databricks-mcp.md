@@ -477,26 +477,107 @@ Ao citar trechos: omitir CPF, telefone, e-mail e dados bancários.
 | Campo | Descrição |
 |---|---|
 | `userid` | ID do usuário |
-| `article_id` | ID do artigo acessado |
-| `article_title` | Título do artigo |
-| `event_date` | Data do acesso (BRT) |
-| `vertical` | Vertical relacionada ao artigo (quando disponível) |
-| `next_action` | Ação seguinte: bot, automação, sem ação |
+| `event_category` | Tipo de evento — ver valores abaixo. **Sempre filtrar por este campo antes de agregar** |
+| `article_id` | ID do artigo acessado (populado quando `event_category = 'artigo'`) |
+| `article_title` | Título do artigo (idem) |
+| `vertical` | Coluna própria — vertical/produto do evento. Independente de `event_category` |
+| `event_date` | Data do evento (BRT) |
+| `next_action` | Ação seguinte: bot, automação, sem ação (populado quando `event_category = 'artigo'`) |
 
-**Uso:** Medir o topo do funil de suporte — quantos clientes acessaram a Central de Ajuda antes de abrir um ticket. Calcular % que avançou para o RecargaBot.
+**Valores de `event_category` e o que cada um mede:**
 
+| Valor | O que representa | Uso na análise |
+|---|---|---|
+| `artigo` | Cliente abriu um artigo específico | Top artigos, funil artigo → bot/automação |
+| `vertical` | Cliente navegou até a página de categoria/vertical sem abrir artigo específico | Demanda por tema sem conteúdo específico — indica busca não resolvida por falta de artigo direto |
+| `pesquisa` | Cliente usou a busca da Central de Ajuda | Termos buscados — sinaliza intenção não atendida se não há clique subsequente em artigo |
+| `ajuda` | Acesso genérico à Central de Ajuda (home, sem navegação específica) | Volume de entrada no topo do funil, antes de qualquer segmentação |
+
+⚠️ **Confirmar via `databricks_preview_query` antes da primeira execução:**
+- Grafia exata dos valores (minúsculo `'artigo'` vs `'Artigo'` etc.)
+- Nome da coluna que armazena o termo buscado em `event_category = 'pesquisa'`
+  (ex: `search_term`, `query_text` — não documentado, validar com `SELECT * LIMIT 5`)
+
+---
+
+**Query 10.1 — Volume por tipo de evento (visão geral do funil de entrada)**
 ```sql
 SELECT
-    DATE(event_date)           AS data,
-    COUNT(DISTINCT userid)     AS usuarios_unicos,
-    COUNT(*)                   AS total_acessos,
-    article_title,
-    COUNT(*) AS acessos_artigo
+    event_category,
+    COUNT(DISTINCT userid) AS usuarios_unicos,
+    COUNT(*)               AS total_eventos
 FROM `prod`.`cx`.`fat_help_center_events`
 WHERE DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
-GROUP BY DATE(event_date), article_title
-ORDER BY acessos_artigo DESC;
+GROUP BY event_category
+ORDER BY total_eventos DESC;
 ```
+
+**Query 10.2 — Top artigos acessados por vertical**
+```sql
+SELECT
+    vertical,
+    article_title,
+    COUNT(DISTINCT userid) AS usuarios_unicos,
+    COUNT(*)               AS total_acessos,
+    SUM(CASE WHEN next_action = 'bot' THEN 1 ELSE 0 END)        AS avancou_bot,
+    SUM(CASE WHEN next_action = 'automacao' THEN 1 ELSE 0 END)  AS avancou_automacao,
+    SUM(CASE WHEN next_action = 'sem_acao' THEN 1 ELSE 0 END)   AS sem_acao_seguinte
+FROM `prod`.`cx`.`fat_help_center_events`
+WHERE event_category = 'artigo'
+  AND DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+  AND vertical = '{VERTICAL}'
+GROUP BY vertical, article_title
+ORDER BY total_acessos DESC
+LIMIT 10;
+```
+
+**Query 10.3 — Navegação por vertical sem artigo específico (gap de conteúdo)**
+```sql
+-- Alto volume aqui = cliente busca o tema mas não encontra artigo direto
+SELECT
+    vertical,
+    COUNT(DISTINCT userid) AS usuarios_unicos,
+    COUNT(*)               AS total_acessos
+FROM `prod`.`cx`.`fat_help_center_events`
+WHERE event_category = 'vertical'
+  AND DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY vertical
+ORDER BY total_acessos DESC;
+```
+
+**Query 10.4 — Termos de pesquisa mais frequentes**
+```sql
+-- Substituir {COLUNA_TERMO} pelo nome real confirmado via preview_query
+SELECT
+    {COLUNA_TERMO}          AS termo_buscado,
+    vertical,
+    COUNT(*) AS total_buscas
+FROM `prod`.`cx`.`fat_help_center_events`
+WHERE event_category = 'pesquisa'
+  AND DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY {COLUNA_TERMO}, vertical
+ORDER BY total_buscas DESC
+LIMIT 15;
+```
+
+**Query 10.5 — Volume genérico de entrada (`ajuda`) — topo absoluto do funil**
+```sql
+SELECT
+    DATE(event_date)       AS data,
+    COUNT(DISTINCT userid) AS usuarios_unicos,
+    COUNT(*)               AS total_acessos
+FROM `prod`.`cx`.`fat_help_center_events`
+WHERE event_category = 'ajuda'
+  AND DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY DATE(event_date)
+ORDER BY data;
+```
+
+**Como usar cada categoria no report:**
+- `artigo` → seção padrão "Central de Ajuda" do funil (top artigos + % que avançou para bot)
+- `vertical` → sinal de oportunidade de melhoria no Report Geral quando o volume for alto e desproporcional aos artigos existentes na mesma vertical — indica gap de conteúdo
+- `pesquisa` → mesma lógica de oportunidade de melhoria: termos buscados sem artigo correspondente popular sinalizam conteúdo ausente
+- `ajuda` → usar apenas para o número absoluto de topo do funil, não segmentar por vertical (é o acesso antes de qualquer escolha)
 
 ---
 
