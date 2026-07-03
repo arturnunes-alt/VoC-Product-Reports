@@ -28,6 +28,8 @@ Toda segunda-feira às 08:00 BRT, o Claude executa automaticamente:
 | `canais.json` | Mapeamento canal → verticais → tags → aberturas obrigatórias | Ao mudar canais ou verticais |
 | `orientacoes-editoriais.md` | Instruções de análise por canal + `contexto_pontual` | `contexto_pontual` semanal; demais raramente |
 | `skill-databricks-mcp.md` | Tabelas, campos e queries padrão do Databricks | Ao adicionar tabelas ou métricas |
+| `skill-zendesk-cx.md` | Protocolo consolidado de queries Zendesk e métricas CX oficiais (`agg_overview`) | Ao mudar filtros ou métricas oficiais |
+| `skill-indecx-api.md` | Acesso direto à API IndeCX — Resolutividade, verbatims, NPS Relacional PF/PJ | Ao mudar ACAO_MAP ou pesquisas |
 | `README.md` | Este guia de setup | Ao mudar o processo |
 
 ---
@@ -35,16 +37,20 @@ Toda segunda-feira às 08:00 BRT, o Claude executa automaticamente:
 ## Pré-requisitos por membro do time
 
 ### Plano Claude
-Requer plano **Max 5× ou superior** com Claude Code habilitado — o Opus 4.8 consome quota significativamente mais alta do que o Sonnet. O plano Pro pode atingir o limite em semanas com uso interativo intenso no mesmo dia da Routine.
+Requer plano **Pro, Max, Team ou Enterprise** com Claude Code habilitado. O Sonnet 5 tem custo por execução baixo o suficiente para caber com folga mesmo no plano Pro (5 execuções/dia), mesmo com uso interativo no mesmo dia da Routine.
 Acesso em: `claude.ai/code/routines`
 
 ### MCPs necessários (conectar em Settings > Connectors)
 
-| MCP | Finalidade | Obrigatório |
+| MCP / Integração | Finalidade | Obrigatório |
 |---|---|---|
 | `[TEST] MCP Gateway AWS AgentCore` | Queries Zendesk — motivos, causas raiz, análise qualitativa | ✅ Sim |
 | `Slack` | Leitura de canais de contexto + envio dos reports | ✅ Sim |
 | `MCP Data - RecargaPay` | NPS, CSAT, Retenção de Bot, funil, perfil de clientes via Databricks | ✅ Sim |
+| **API IndeCX** (direta, não é MCP) | Resolutividade, verbatims, NPS Relacional PF/PJ | ✅ Sim |
+
+**API IndeCX não é um connector do Claude — é uma chamada HTTP direta feita pela Routine
+via bash/Python.** Requer variável de ambiente configurada (ver seção abaixo).
 
 ---
 
@@ -56,7 +62,19 @@ Em `claude.ai` → Settings → Connectors:
 - Slack MCP — confirmar autenticação com conta RecargaPay
 - `MCP Data - RecargaPay` → `https://mcp-data.recargapay.com/mcp`
 
-### 2. Criar a Routine
+### 2. Configurar a variável de ambiente da API IndeCX
+
+A Routine faz uma chamada HTTP direta à API IndeCX (não é um MCP connector).
+Ao criar a Routine, na seção **Environment Variables**, adicionar:
+
+```
+INDECX_COMPANY_KEY = <company key da RecargaPay — solicitar ao responsável pelo Hub VoC>
+```
+
+⚠️ Nunca commitar a Company-Key em texto plano no repositório — apenas como variável
+de ambiente da Routine. Ver detalhes de uso em `skill-indecx-api.md`.
+
+### 3. Criar a Routine
 Em `claude.ai/code/routines` → New Routine:
 
 - **Name:** `VoC Report Semanal — RecargaPay`
@@ -66,40 +84,34 @@ Em `claude.ai/code/routines` → New Routine:
 
 **Prompt da Routine:**
 ```
-Você é um analista especializado em Voice of Customer (VoC) da RecargaPay executando uma rotina semanal autônoma com Claude Opus 4.8.
+Você é um analista especializado em Voice of Customer (VoC) da RecargaPay executando uma rotina semanal autônoma com Claude Sonnet 5.
 
 Execute o pipeline completo de reports VoC conforme as instruções do SKILL.md deste repositório.
 
 CONFIGURAÇÃO
 - Período: semana anterior completa em BRT (segunda 00:00 a domingo 23:59)
 - Calcule as datas corretas a partir da data de hoje
-- Modelo: claude-opus-4-8
+- Modelo: claude-sonnet-5
 
 ARQUIVOS DE REFERÊNCIA
 - SKILL.md → lógica principal, fases de execução e templates
 - canais.json → canais, verticais, tags Zendesk, aberturas obrigatórias e thresholds
 - orientacoes-editoriais.md → instruções de análise por canal e contexto_pontual
-- skill-databricks-mcp.md → tabelas, campos e queries Databricks
+- skill-databricks-mcp.md → tabelas, campos e queries Databricks complementares
+- skill-zendesk-cx.md → protocolo consolidado Zendesk + métricas oficiais (agg_overview)
+- skill-indecx-api.md → API IndeCX para Resolutividade, verbatims e NPS Relacional PF/PJ
 
-MCPs
+MCPs E INTEGRAÇÕES
 - Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk)
 - Dados: MCP Data - RecargaPay (databricks_run_query / databricks_preview_query)
 - Contexto e envio: Slack MCP
+- API IndeCX: chamada HTTP direta via bash/Python — usar variável INDECX_COMPANY_KEY do ambiente
 
 EXECUÇÃO
-Execute as 5 fases em sequência sem interrupção. Se um MCP falhar, omita as seções afetadas e continue com os dados disponíveis.
-
-RACIOCÍNIO
-Aplique raciocínio estendido apenas nas seguintes etapas:
-- Leitura do Slack: ao correlacionar eventos com variações nos dados
-- Análise qualitativa dos tickets: ao sintetizar padrões entre causas raiz
-- Destaques da semana: ao conectar múltiplas fontes em um insight coeso
-- Report executivo: ao selecionar os 2-3 pontos mais relevantes para liderança
-
-Nas demais etapas (queries, montagem de templates, envio ao Slack), execute diretamente sem raciocínio adicional.
+Execute as 5 fases em sequência sem interrupção. Se um MCP falhar, omita as seções afetadas e continue com os dados disponíveis. Priorize correlações claras entre eventos do Slack, dados quantitativos e análise qualitativa dos tickets ao montar os destaques da semana e o report executivo.
 ```
 
-### 3. Testar antes de ativar
+### 4. Testar antes de ativar
 Na página da Routine, usar **Run now** com o modo teste:
 
 Adicionar ao final do prompt antes de testar:
@@ -133,10 +145,10 @@ Identificar cada bloco com o canal original: [TESTE → #nome-do-canal]
 | Aspecto | Detalhe |
 |---|---|
 | Execuções diárias | Pro: 5/dia · Max 5×: 15/dia · Team/Enterprise: 25/dia |
-| Duração estimada por execução | 30–60 min |
-| Modelo | Claude Opus 4.8 (`claude-opus-4-8`) |
-| Custo estimado por execução | ~$8–12 (Opus 4.8) |
-| Recomendação de plano | **Max 5×** se Claude Code for uso regular do time |
+| Duração estimada por execução | 20–40 min |
+| Modelo | Claude Sonnet 5 (`claude-sonnet-5`) |
+| Custo estimado por execução | ~$1,50–3 (Sonnet 5) |
+| Recomendação de plano | **Pro** já é suficiente para uso individual; **Max** se Claude Code for uso regular do time |
 
 ---
 
