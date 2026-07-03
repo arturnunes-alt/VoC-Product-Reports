@@ -69,6 +69,15 @@ Aplicar a todos os reports. A Routine usa estas definições para calcular e apr
 Apresentar em todos os reports a visão do funil completo. A Routine monta este funil
 com dados do Databricks e Amplitude (ou `prod.cx.fat_help_center_events`).
 
+**Central de Ajuda — segmentar sempre por `event_category`:**
+- `artigo` → cliente abriu um artigo específico (usar para top artigos e funil artigo→bot)
+- `vertical` → navegou até a categoria/vertical sem abrir artigo — sinal de gap de conteúdo
+- `pesquisa` → usou a busca sem necessariamente encontrar artigo — mesmo sinal de gap
+- `ajuda` → acesso genérico, usar só para o número absoluto de topo do funil
+
+Volume alto em `vertical` ou `pesquisa` sem artigo de destaque correspondente na mesma
+vertical é candidato direto à seção "Destaques e Oportunidades" do Report Geral.
+
 ```
 Central de Ajuda (artigos acessados)
     ↓ [% que acessa automações ou bot]
