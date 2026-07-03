@@ -153,7 +153,17 @@ Não somar com N1 — manter separado em todas as contagens.
 
 ### 2D — Central de Ajuda (funil de entrada)
 Fonte: `prod.cx.fat_help_center_events` (ou Amplitude quando disponível).
-Extrair: total de acessos, top artigos por volume, % que avançou para bot ou automações.
+**Sempre filtrar por `event_category` antes de agregar** — a tabela mistura 4 tipos de evento
+(`artigo`, `vertical`, `pesquisa`, `ajuda`). Ver queries completas em `skill-databricks-mcp.md` §10.
+
+Extrair:
+- `event_category = 'artigo'` → top artigos por vertical + % que avançou para bot/automação (via `next_action`)
+- `event_category = 'vertical'` → volume de navegação sem artigo específico — sinal de gap de conteúdo
+- `event_category = 'pesquisa'` → termos mais buscados sem artigo popular correspondente — mesmo sinal de gap
+- `event_category = 'ajuda'` → volume absoluto de topo do funil (não segmentar por vertical)
+
+Volume alto em `vertical` ou `pesquisa` sem artigo de alto acesso na mesma vertical é
+candidato a "Destaques da semana" / oportunidade de melhoria no Report Geral.
 
 ### 2E — CSAT Atendimento N1
 **Fonte primária (número oficial):** `prod.cx.agg_overview` WHERE `metric = 'csat'`
@@ -401,8 +411,9 @@ Incluir em todos os reports (geral e produtos). Montar com dados do Databricks e
 *FUNIL DE SUPORTE*
 
 *Central de Ajuda*
-• [N] acessos no período | Top artigos: [art.1] ([N]), [art.2] ([N])
+• [N] acessos no período (event_category=ajuda) | Top artigos: [art.1] ([N]), [art.2] ([N])
 • [X%] avançaram para RecargaBot ou automações
+• [Apenas se relevante] Gap de conteúdo: [N] buscas/navegações por vertical sem artigo popular correspondente
 
 *RecargaBot*
 • [N] contatos iniciados | Retenção: *[X%]* (sem. ant.: [X%]) | Meta: —
