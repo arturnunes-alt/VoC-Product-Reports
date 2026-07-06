@@ -43,8 +43,7 @@
       "detratores": "<=6",
       "metrica_indecx": "nps-0-10",
       "historico_semanas": 5,
-      "fonte_oficial": "prod.cx.agg_overview (metric='nps tx')",
-      "fonte_verbatims": "API IndeCX"
+      "fonte_oficial": "prod.cx.agg_overview (metric='nps tx')"
     },
     "nps_relacional": {
       "meta": 50,
@@ -56,7 +55,7 @@
         "PJ"
       ],
       "historico_semanas": 5,
-      "fonte_oficial": "API IndeCX (unica fonte disponivel)"
+      "fonte_oficial": "prod.cx.fat_indecx_metrics (Databricks) -- confirmar metrica no schema; omitir se indisponivel"
     },
     "csat_n1": {
       "meta_pct_satisfeitos": 80,
@@ -66,7 +65,6 @@
       "metrica_indecx": "csat-1-5",
       "filtro_join": "flg_human = true",
       "historico_semanas": 5,
-      "fonte_resolutividade": "API IndeCX (additionalQuestions)",
       "fonte_oficial": "prod.cx.agg_overview (metric='csat')"
     },
     "csat_bot": {
@@ -75,7 +73,6 @@
       "metrica_indecx": "csat-1-5",
       "filtro_join": "flg_retention_bot = true",
       "historico_semanas": 5,
-      "fonte_resolutividade": "API IndeCX (additionalQuestions)",
       "fonte_oficial": "prod.cx.agg_overview (metric='csat', flg_retention_bot=true)"
     },
     "retencao_bot": {
@@ -456,17 +453,5 @@
     "retencao_bot_minimo_pct": 45,
     "canal_regulatorio_acima_media": true
   },
-  "hub_voc_url": "https://sites.google.com/recargapay.com/voc/",
-  "api_indecx": {
-    "descricao": "Chamada HTTP direta (nao e MCP) para enriquecimento qualitativo de NPS/CSAT",
-    "env_var_obrigatoria": "INDECX_COMPANY_KEY",
-    "usar_para": [
-      "resolutividade_csat_n1",
-      "resolutividade_csat_bot",
-      "verbatims_nps_detratores",
-      "nps_relacional_pf_pj"
-    ],
-    "cross_check_threshold_pct": 10,
-    "referencia": "skill-indecx-api.md"
-  }
+  "hub_voc_url": "https://sites.google.com/recargapay.com/voc/"
 }
