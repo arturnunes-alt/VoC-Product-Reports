@@ -21,7 +21,7 @@
       {
         "nome": "Customer Service N1",
         "fonte": "dim_zendesk_tickets_summary",
-        "filtro": "flg_human = true AND flg_invalid_bot = false AND flg_retention_bot = false AND key_channel NOT LIKE '%deriva%'"
+        "filtro": "flg_human = true AND flg_invalid_bot = false AND flg_retention_bot = false AND friendly_service_channel <> 'derivacao' AND flg_duplicate = false"
       },
       {
         "nome": "Special Cases N2",
