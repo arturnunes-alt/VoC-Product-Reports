@@ -75,6 +75,14 @@ Em `claude.ai/code/routines` → New Routine:
 ```
 Você é um analista especializado em Voice of Customer (VoC) da RecargaPay executando uma rotina semanal autônoma com Claude Sonnet 5.
 
+VALIDAÇÃO INICIAL (antes da Fase 0)
+Confirme que as tools dos 3 MCPs abaixo estão de fato registradas nesta sessão
+(busque por nome exato de cada uma). Se qualquer uma não retornar tools utilizáveis
+— mesmo que o servidor responda a resources —, NÃO prossiga com dados parciais ou
+inventados: encerre a execução, registre exatamente quais MCPs falharam e notifique.
+Isso vale especialmente para o Slack MCP, já que sem ele não há como entregar nem
+um report de fallback.
+
 Execute o pipeline completo de reports VoC conforme as instruções do SKILL.md deste repositório.
 
 CONFIGURAÇÃO
@@ -82,20 +90,32 @@ CONFIGURAÇÃO
 - Calcule as datas corretas a partir da data de hoje
 - Modelo: claude-sonnet-5
 
-ARQUIVOS DE REFERÊNCIA
+ARQUIVOS DE REFERÊNCIA (ler todos na Fase 0)
 - SKILL.md → lógica principal, fases de execução e templates
 - canais.json → canais, verticais, tags Zendesk, aberturas obrigatórias e thresholds
 - orientacoes-editoriais.md → instruções de análise por canal e contexto_pontual
 - skill-databricks-mcp.md → tabelas, campos e queries Databricks complementares
 - skill-zendesk-cx.md → protocolo consolidado Zendesk + métricas oficiais (agg_overview)
 
-MCPs
+MCPs — únicas integrações permitidas
 - Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk)
 - Dados: MCP Data - RecargaPay (databricks_run_query / databricks_preview_query)
 - Contexto e envio: Slack MCP
+⛔ Não realizar chamadas HTTP diretas a domínios externos. Toda a análise deve vir
+exclusivamente dos 3 MCPs acima — não há integrações de API externa nesta Routine.
+
+FILTROS CRÍTICOS — sempre usar a versão corrigida
+Ao consultar `dim_zendesk_tickets_summary` ou `agg_overview` no Databricks, usar
+sempre `friendly_service_channel <> 'derivacao'` e `flg_duplicate = false`.
+Nunca usar `key_channel NOT LIKE '%deriva%'` — esse padrão está descontinuado e
+causa mesclagem incorreta de volume (detalhes em skill-zendesk-cx.md §4).
 
 EXECUÇÃO
-Execute as 5 fases em sequência sem interrupção. Se um MCP falhar, omita as seções afetadas e continue com os dados disponíveis. Priorize correlações claras entre eventos do Slack, dados quantitativos e análise qualitativa dos tickets ao montar os destaques da semana e o report executivo.
+Execute as 5 fases em sequência sem interrupção. Se um MCP falhar após passar na
+validação inicial (falha durante a execução, não na checagem de tools), omita as
+seções afetadas e continue com os dados disponíveis. Priorize correlações claras
+entre eventos do Slack, dados quantitativos e análise qualitativa dos tickets ao
+montar os destaques da semana e o report executivo.
 ```
 
 ### 3. Testar antes de ativar
