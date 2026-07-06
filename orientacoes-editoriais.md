@@ -1,6 +1,6 @@
 # Orientações Editoriais e de Análise por Canal
 **Repositório:** VoC-Product-Reports  
-**Versão:** 2.0  
+**Versão:** 2.1  
 **Mantenedor:** Artur Nunes — com inputs dos DRIs de cada squad
 
 ---
@@ -25,35 +25,35 @@ Aplicar a todos os reports. A Routine usa estas definições para calcular e apr
 ### NPS Transacional
 - **Meta:** 75 pts
 - **Escala:** 0–10 · Promotores ≥9 · Detratores ≤6
-- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric = 'nps-0-10'`
+- **Fonte primária:** `prod.cx.agg_overview` WHERE `metric = 'nps tx'` (ver `skill-zendesk-cx.md` §3)
 - **Quando:** Pesquisa enviada após cada transação realizada
 - **Segmentação:** Por produto/vertical
 - **Variações:** Correlacionar com mudanças de produto, atualizações e incidentes do período
-- **Perguntas adicionais:** Extrair temas recorrentes das respostas abertas
+- **Verbatims:** obter via análise qualitativa de tickets no Zendesk MCP (Fase 3) — não via API externa
 
 ### NPS Relacional
 - **Meta:** 50 pts
 - **Escala:** 0–10 · Promotores ≥9 · Detratores ≤6
-- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric = 'nps-relacional'` (ou métrica equivalente)
+- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric` equivalente a relacional (confirmar via `databricks_preview_query`)
 - **Quando:** Pesquisa enviada para clientes ativos da base
 - **Segmentação:** PF vs PJ — apresentar separadamente
 - **Variações:** Fortemente impactada por incidentes, atualizações do app e mudanças de produto
-- **Perguntas adicionais:** Mapear menções a produtos específicos nos feedbacks abertos
+- **Se indisponível:** omitir a seção do report — não é dado crítico o suficiente para bloquear a Routine
 
 ### CSAT Atendimento (Customer Service N1)
 - **Meta:** 80%
 - **Escala:** 1–5 · Satisfeitos ≥4 · Insatisfeitos ≤2
-- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric = 'csat-1-5'` + `flg_human = true`
+- **Fonte primária:** `prod.cx.agg_overview` WHERE `metric = 'csat'` AND `friendly_service_channel IN ('c2c', 'chat online', 'e-mail')`
 - **Quando:** Pesquisa enviada após atendimento humano (C2C, Chat, E-mail)
-- **Inclui:** Pergunta de Resolutividade — apresentar % de resolução separadamente
+- **Resolutividade:** extrair via `fat_indecx_metrics` se a tabela tiver campo equivalente; senão, omitir
 - **Mede:** Satisfação com o atendimento recebido e solução oferecida
 
 ### CSAT RecargaBot
 - **Meta:** 80%
 - **Escala:** 1–5
-- **Fonte:** `prod.cx.fat_indecx_metrics` WHERE `metric = 'csat-1-5'` + `flg_retention_bot = true`
+- **Fonte primária:** `prod.cx.agg_overview` WHERE `metric = 'csat'` AND `flg_retention_bot = true`
 - **Quando:** Pesquisa enviada para clientes retidos pelo bot sem transferência humana
-- **Inclui:** Pergunta de Resolutividade — apresentar % de resolução separadamente
+- **Resolutividade:** mesma lógica de fallback da CSAT Atendimento
 - **Mede:** Satisfação com o atendimento do RecargaBot
 
 ### Retenção de Bot
@@ -89,11 +89,14 @@ Special Cases N2 (Ouvidoria, ReclameAqui, Regulatórios, Redes Sociais)
 ```
 
 **Regras de separação obrigatórias:**
-- N1 (`flg_human = true`, `flg_invalid_bot = false`, `flg_retention_bot = false`, canal não contém 'deriva')
+- N1 (`flg_human = true`, `flg_invalid_bot = false`, `flg_retention_bot = false`,
+  `friendly_service_channel <> 'derivacao'`, `flg_duplicate = false`)
 - Bot retido (`flg_retention_bot = true`)
 - Special Cases N2 (canais: ouvidoria, reclameaqui, consumidor.gov, bacen, procon, redes sociais)
-- Derivações (canal contém 'deriva') — excluir de todas as contagens de volume
-- Duplicados e inválidos (`flg_invalid_bot = true`) — excluir sempre
+- Derivações (`friendly_service_channel = 'derivacao'`) — excluir sempre de todas as contagens.
+  ⛔ Nunca usar `key_channel NOT LIKE '%deriva%'` — padrão descontinuado, causa mesclagem
+  incorreta de volume (ver `skill-zendesk-cx.md` §4)
+- Duplicados e inválidos (`flg_invalid_bot = true`, `flg_duplicate = true`) — excluir sempre
 
 ---
 
