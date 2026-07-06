@@ -76,8 +76,14 @@ Tabela principal de tickets. Base para quase toda análise.
 WHERE t.flg_human = true
   AND t.flg_invalid_bot = false
   AND t.flg_retention_bot = false
-  AND t.key_channel NOT LIKE '%deriva%'
+  AND t.friendly_service_channel <> 'derivacao'
+  AND t.flg_duplicate = false
 ```
+
+⚠️ **Todas as queries deste documento devem incluir os 5 filtros acima.** Se alguma
+query mais abaixo aparecer sem `flg_duplicate = false` ou usando `key_channel NOT LIKE
+'%deriva%'` (padrão antigo e incorreto — ver `skill-zendesk-cx.md` §4), trate como bug
+e corrija antes de usar em produção.
 
 **Filtro de canal crítico (Ouvidoria, BACEN, Reclame Aqui etc.):**
 ```sql
@@ -264,7 +270,7 @@ WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
   AND t.flg_human = true
   AND t.flg_invalid_bot = false
   AND t.flg_retention_bot = false
-  AND t.key_channel NOT LIKE '%deriva%'
+  AND t.friendly_service_channel <> 'derivacao'
 GROUP BY t.vertical
 ORDER BY total_tickets DESC;
 ```
@@ -297,7 +303,7 @@ nps_calc AS (
       AND t.flg_human = true
       AND t.flg_invalid_bot = false
       AND t.flg_retention_bot = false
-      AND t.key_channel NOT LIKE '%deriva%'
+      AND t.friendly_service_channel <> 'derivacao'
     GROUP BY t.vertical
 )
 SELECT
@@ -390,7 +396,7 @@ WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
   AND t.flg_human = true
   AND t.flg_invalid_bot = false
   AND t.flg_retention_bot = false
-  AND t.key_channel NOT LIKE '%deriva%'
+  AND t.friendly_service_channel <> 'derivacao'
 ORDER BY created_at ASC;
 ```
 
@@ -632,7 +638,7 @@ SELECT
     COUNT(CASE WHEN flg_human = true
                AND flg_invalid_bot = false
                AND flg_retention_bot = false
-               AND key_channel NOT LIKE '%deriva%' THEN 1 END) AS n1_humano,
+               AND friendly_service_channel <> 'derivacao' THEN 1 END) AS n1_humano,
     COUNT(CASE WHEN flg_retention_bot = true THEN 1 END) * 100.0
         / NULLIF(COUNT(CASE WHEN flg_retention_bot = true OR
                                  (flg_human = true AND flg_invalid_bot = false) THEN 1 END), 0)
