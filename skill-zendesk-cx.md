@@ -1,3 +1,10 @@
+> ⚠️ **Nota de precedência (Jul/2026):** Filtros de exclusão, tags de vertical/motivo/causa
+> raiz e classificação de flags bot/humano agora têm fonte de verdade em
+> `/mnt/skills/organization/cx-orchestrator-reference/references/` (`exclusions.md`,
+> `custom-field-values.md`, `bot-classification.md`) — mais completa e atualizada que as
+> seções equivalentes abaixo. Em caso de conflito, a skill organizacional vence. Este
+> arquivo permanece como referência rápida específica da Routine VoC.
+
 # Skill — Zendesk & CX Analytics · Referência Consolidada
 <!-- Consolidado a partir das skills organizacionais: zendesk-shared-reference,
      zendesk-overview, zendesk-vertical-analysis, zendesk-cx-insights,
