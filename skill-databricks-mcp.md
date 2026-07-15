@@ -1,3 +1,10 @@
+> ⚠️ **Nota de precedência (Jul/2026):** Para métricas oficiais (NPS, CSAT, volume,
+> retenção de bot, rankings de motivo/causa raiz), a fonte de verdade passou a ser
+> `/mnt/skills/organization/cx-product-insights/` (via `agg_overview`) — ler essa skill
+> organizacional primeiro. Este arquivo mantém apenas queries específicas desta Routine
+> não cobertas por ela: perfil New/NewNew/Repeat, tipo de cartão, faixa de investimento CDB,
+> e detalhamento de `event_category` da Central de Ajuda.
+
 # Skill — Databricks MCP · Referência de Tabelas e Queries
 
 **MCP:** MCP Data - RecargaPay  
