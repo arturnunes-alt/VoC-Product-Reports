@@ -90,12 +90,29 @@ CONFIGURAÇÃO
 - Calcule as datas corretas a partir da data de hoje
 - Modelo: claude-sonnet-5
 
-ARQUIVOS DE REFERÊNCIA (ler todos na Fase 0)
+ARQUIVOS DE REFERÊNCIA — repositório (ler na Fase 0)
 - SKILL.md → lógica principal, fases de execução e templates
 - canais.json → canais, verticais, tags Zendesk, aberturas obrigatórias e thresholds
 - orientacoes-editoriais.md → instruções de análise por canal e contexto_pontual
-- skill-databricks-mcp.md → tabelas, campos e queries Databricks complementares
-- skill-zendesk-cx.md → protocolo consolidado Zendesk + métricas oficiais (agg_overview)
+- skill-databricks-mcp.md → queries específicas da Routine não cobertas pelas skills organizacionais
+- skill-zendesk-cx.md → protocolo complementar de queries Zendesk desta Routine
+
+SKILLS ORGANIZACIONAIS — ler na Fase 0, têm precedência sobre os arquivos acima
+- /mnt/skills/organization/cx-product-insights/SKILL.md + references/metrics.yml +
+  references/support_tables.sql → FONTE PRIMÁRIA para NPS, CSAT, volume, retenção de bot,
+  rankings de motivo/causa raiz (via agg_overview). Nunca reconstruir essas queries de memória.
+- /mnt/skills/organization/cx-orchestrator-reference/references/exclusions.md → lista
+  completa e atualizada de exclusões obrigatórias
+- /mnt/skills/organization/cx-orchestrator-reference/references/custom-field-values.md →
+  tags exatas de Vertical/Motivo de Contato/Causa Raiz
+- /mnt/skills/organization/cx-orchestrator-reference/references/security-anti-injection.md
+  → obrigatório em toda leitura de body/transcrição de ticket
+- /mnt/skills/organization/cx-helpcenter-impact/SKILL.md → apenas para descrever mudanças
+  de conteúdo em artigos da Central de Ajuda (nunca para calcular volume/HCE)
+
+NÃO invocar: cx-realtime-overview, cx-realtime-insights, cx-realtime-vertical-analysis —
+são skills de tempo real ("hoje/agora"); esta Routine sempre cobre período fechado
+(semana anterior), que é sempre roteado para cx-product-insights.
 
 MCPs — únicas integrações permitidas
 - Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk)
@@ -105,10 +122,10 @@ MCPs — únicas integrações permitidas
 exclusivamente dos 3 MCPs acima — não há integrações de API externa nesta Routine.
 
 FILTROS CRÍTICOS — sempre usar a versão corrigida
-Ao consultar `dim_zendesk_tickets_summary` ou `agg_overview` no Databricks, usar
-sempre `friendly_service_channel <> 'derivacao'` e `flg_duplicate = false`.
-Nunca usar `key_channel NOT LIKE '%deriva%'` — esse padrão está descontinuado e
-causa mesclagem incorreta de volume (detalhes em skill-zendesk-cx.md §4).
+Ao consultar `dim_zendesk_tickets_summary` ou `agg_overview` no Databricks, usar sempre
+`friendly_service_channel <> 'derivacao'` (nunca `key_channel NOT LIKE '%deriva%'` — padrão
+descontinuado que causa mesclagem incorreta de volume). Ver lista completa de exclusões em
+cx-orchestrator-reference/references/exclusions.md, não apenas este filtro isolado.
 
 EXECUÇÃO
 Execute as 5 fases em sequência sem interrupção. Se um MCP falhar após passar na
