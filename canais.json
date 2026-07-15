@@ -306,11 +306,12 @@
             "Boleto de Cobranca"
           ],
           "tags_zendesk": [
-            "boleto_de_cobranca"
+            "boleto_de_cobrança"
           ],
           "aberturas_especificas": [
             "perfil_new_newnew_repeat"
-          ]
+          ],
+          "nota": "Tag confirmada via custom-field-values.md (cx-orchestrator-reference) — gap anterior estava incorreto, a vertical existe."
         },
         {
           "nome_report": "Report de VoC - Recarga de Celular",
@@ -359,10 +360,8 @@
           "verticais": [
             "Pix CC"
           ],
-          "tags_zendesk": [
-            "CONFIRMAR_TAG_PIX_CC"
-          ],
-          "nota": "Validar tag com query exploratoria antes de usar",
+          "tags_zendesk": [],
+          "nota": "Confirmado: nao existe tag propria de vertical para Pix CC em custom-field-values.md. Identificar via busca textual por cartao/cartão em reason_contact/root_cause de tickets tag pix-out (ver flag_pix_cartao em skill-databricks-mcp.md).",
           "aberturas_especificas": [
             "perfil_new_newnew_repeat"
           ]
@@ -453,5 +452,16 @@
     "retencao_bot_minimo_pct": 45,
     "canal_regulatorio_acima_media": true
   },
-  "hub_voc_url": "https://sites.google.com/recargapay.com/voc/"
+  "hub_voc_url": "https://sites.google.com/recargapay.com/voc/",
+  "skills_organizacionais": {
+    "descricao": "Skills da organizacao com precedencia sobre arquivos deste repositorio",
+    "fonte_primaria_metricas": "/mnt/skills/organization/cx-product-insights/",
+    "exclusoes_e_taxonomia": "/mnt/skills/organization/cx-orchestrator-reference/references/",
+    "central_de_ajuda_conteudo": "/mnt/skills/organization/cx-helpcenter-impact/",
+    "nao_aplicavel": [
+      "cx-realtime-overview",
+      "cx-realtime-insights",
+      "cx-realtime-vertical-analysis"
+    ]
+  }
 }
