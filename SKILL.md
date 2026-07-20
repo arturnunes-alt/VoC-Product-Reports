@@ -5,7 +5,7 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "1.6"
+version: "1.7"
 model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
@@ -407,29 +407,96 @@ grupos (side conversations).
 **O volume** de contatos do RecargaBot (para a Distribuição de Volume acima) continua
 vindo de `agg_overview` (`flg_retention_bot = true`, `ticket_count`).
 
-**O percentual de retenção** e o detalhamento por tema usam uma fonte diferente e mais
-granular: `prod.cx.fat_botmaker_metrics`, com o flag `flg_retention` por `entry_theme`.
+**O percentual de retenção, CSAT do bot e detalhamento por estágio** usam
+`prod.cx.agg_botmaker_metrics` — tabela já agregada com granularidade de sessão de bot,
+mais rica que qualquer cálculo feito a partir de `agg_overview`.
+
+**Colunas principais:**
+
+| Coluna | Uso |
+|---|---|
+| `total_sessions` | Denominador da retenção |
+| `attended_by_bot` | Sessões efetivamente atendidas pelo bot |
+| `retained_by_bot` | Sessões retidas sem transbordo — numerador da retenção |
+| `overflow` | Transbordo intencional para humano |
+| `passive_abandonment` / `active_abandonment` | Cliente abandonou a sessão (passiva = inatividade, ativa = saiu voluntariamente) |
+| `csat_promoter` / `csat_answered` | CSAT do bot: `csat_promoter / csat_answered` |
+| `fcr_bot_stage_count` | Resolução no primeiro contato, por estágio |
+| `stage` | Estágio/etapa do fluxo — usar para "Top temas de não-retenção" |
+| `flg_hyperpersonalized` / `flg_generative` / `flg_static` | Classificam o tipo de fluxo: Hiper / Generativo / Estático / Outro |
+| `flg_retention_inactivity` | Separa retenção por inatividade (falso encerramento) da retenção real |
+| `resolution_seconds_sum/count`, `time_bot_seconds_sum/count`, `time_user_seconds_sum/count` | Tempos de resolução e de interação |
+| `not_understood_count_sum`, `session_pct_not_understood_sum/count` | Sinal de qualidade do entendimento do bot |
 
 ```sql
 -- Retenção geral do período
-SELECT AVG(flg_retention) AS pct_retencao
-FROM prod.cx.fat_botmaker_metrics
+SELECT
+  SUM(retained_by_bot) AS retido,
+  SUM(total_sessions) AS total,
+  ROUND(SUM(retained_by_bot) / NULLIF(SUM(total_sessions), 0) * 100, 1) AS pct_retencao
+FROM prod.cx.agg_botmaker_metrics
 WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
 
--- Retenção por tema — usar para "Top motivos de não-retenção"
+-- CSAT do bot
 SELECT
-  entry_theme,
-  AVG(flg_retention) AS pct_retencao,
-  COUNT(*) AS volume
-FROM prod.cx.fat_botmaker_metrics
+  ROUND(SUM(csat_promoter) / NULLIF(SUM(csat_answered), 0) * 100, 1) AS csat_bot_pct
+FROM prod.cx.agg_botmaker_metrics
 WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
-GROUP BY entry_theme
-HAVING COUNT(*) >= 10  -- evitar destacar tema com amostra irrelevante
+
+-- Top estágios com pior retenção — usar para "Top temas de não-retenção"
+SELECT
+  stage,
+  SUM(total_sessions) AS sess,
+  SUM(retained_by_bot) AS ret,
+  ROUND(SUM(retained_by_bot) / NULLIF(SUM(total_sessions), 0) * 100, 1) AS pct_retencao,
+  SUM(fcr_bot_stage_count) AS fcr,
+  SUM(csat_promoter) AS cprom,
+  SUM(csat_answered) AS cans
+FROM prod.cx.agg_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}' AND stage IS NOT NULL
+GROUP BY stage
+HAVING SUM(total_sessions) >= 10  -- evitar destacar estágio com amostra irrelevante
 ORDER BY pct_retencao ASC
+LIMIT 3
+
+-- Série diária (para montar série de 5 semanas), com overflow/abandono como contexto qualitativo
+SELECT
+  creation_date AS d,
+  SUM(total_sessions) AS total,
+  SUM(attended_by_bot) AS att,
+  SUM(retained_by_bot) AS ret,
+  SUM(overflow) AS ovf,
+  SUM(passive_abandonment) AS pab,
+  SUM(active_abandonment) AS aab,
+  SUM(csat_promoter) AS cprom,
+  SUM(csat_answered) AS cans
+FROM prod.cx.agg_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO_SERIE}' AND '{DATA_FIM}'
+GROUP BY creation_date
+ORDER BY creation_date
+
+-- Abertura por tipo de fluxo (opcional — usar em "Destaques da semana" se houver variação relevante)
+SELECT
+  creation_date AS d,
+  CASE
+    WHEN flg_hyperpersonalized THEN 'Hiper'
+    WHEN flg_generative THEN 'Generativo'
+    WHEN flg_static THEN 'Estatico'
+    ELSE 'Outro'
+  END AS fluxo,
+  SUM(total_sessions) AS sess,
+  SUM(csat_promoter) AS cprom,
+  SUM(csat_answered) AS cans
+FROM prod.cx.agg_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY creation_date, fluxo
+ORDER BY creation_date
 ```
 
-Os temas com **menor** `pct_retencao` (e volume relevante) são os "Top motivos de
-não-retenção" do template — maior taxa de transbordo para humano.
+Os estágios com **menor** `pct_retencao` (e volume relevante) são os "Top temas de
+não-retenção" do template. Quando um estágio tiver baixa retenção, usar `overflow` vs
+`passive_abandonment`/`active_abandonment` do mesmo período para explicar **por quê** —
+transbordo intencional é diferente de abandono do cliente, e isso muda a ação recomendada.
 
 ### Query de referência — volume da Distribuição
 
@@ -484,7 +551,7 @@ Visitas únicas à vertical, últimas 5 semanas: [série] ([+/-X%] última seman
 
 *RecargaBot — detalhe*
 • CSAT Bot: *[X%]* satisfeitos | Resolutividade: *[X%]* (se disponível)
-• Top temas de não-retenção (via fat_botmaker_metrics, entry_theme): [tema 1] ([X%] retenção) · [tema 2] ([X%] retenção)
+• Top temas de não-retenção (via agg_botmaker_metrics, stage): [estágio 1] ([X%] retenção — overflow/abandono) · [estágio 2] ([X%] retenção)
 
 *N1 Humano — detalhe*
 • CSAT N1: *[X%]* satisfeitos | Resolutividade: *[X%]*
