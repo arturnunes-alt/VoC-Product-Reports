@@ -66,10 +66,26 @@ Aplicar a todos os reports. A Routine usa estas definições para calcular e apr
 
 ## FUNIL DE SUPORTE — REFERÊNCIA GLOBAL
 
-Apresentar em todos os reports a visão do funil completo. A Routine monta este funil
-com dados do Databricks e Amplitude (ou `prod.cx.fat_help_center_events`).
+Apresentar em **todos** os reports — Geral, Executivo e todos os Reports de Produto,
+sem exceção — a Distribuição de Volume de Atendimento e a evolução de acessos à Central
+de Ajuda. Ver template completo e SQL de referência em `SKILL.md` §"TEMPLATE DE REPORT —
+FUNIL DE SUPORTE".
 
-**Central de Ajuda — segmentar sempre por `event_category`:**
+**Distribuição de Volume — 3 grupos obrigatórios (com % do total em cada report):**
+- **RecargaBot** (retido, sem transbordo) — `flg_retention_bot = true`
+- **N1 Humano** (chat online + c2c + e-mail) — `friendly_service_channel IN ('chat online', 'c2c', 'e-mail')`
+- **N2 Special Cases** (special cases + ouvidoria + redes sociais + stores + canais especiais) —
+  `friendly_service_channel IN ('special cases', 'ouvidoria', 'social media', 'stores', 'canais especiais')`
+
+⚠️ Este agrupamento é uma decisão editorial da VoC — "redes sociais" entra em N2 aqui,
+mesmo que a organização classifique socialmente como N1 no `channel_class4` oficial.
+Não ajustar para bater com a classificação oficial da organização.
+
+**Central de Ajuda — evolução por produto (obrigatório em todo report de produto):**
+Apresentar série de 5 semanas de visitas únicas à vertical (CX-009 via `cx-product-insights`).
+Report Geral/Executivo apresentam o agregado de todas as verticais + top 3 produtos por volume.
+
+**Central de Ajuda — segmentar por `event_category` quando disponível na tabela granular:**
 - `artigo` → cliente abriu um artigo específico (usar para top artigos e funil artigo→bot)
 - `vertical` → navegou até a categoria/vertical sem abrir artigo — sinal de gap de conteúdo
 - `pesquisa` → usou a busca sem necessariamente encontrar artigo — mesmo sinal de gap
@@ -153,23 +169,24 @@ Correlacionar cada tema com as variações observadas nos dados.
 ─────────────────────────────
 *FUNIL DE SUPORTE*
 
-*Central de Ajuda*
-• [N] acessos a artigos no período 📊
-• Top 3 artigos mais acessados com volume
-• % que avançou para o RecargaBot
+*Distribuição de Volume de Atendimento*
+• *RecargaBot (retido):* *[N]* ([X%] do total) | Retenção: *[X%]* (Meta: — | sem. ant.: [X%])
+• *N1 Humano* (chat online + c2c + e-mail): *[N]* ([X%] do total) ([+/-X%] vs sem. ant. | [+/-X%] vs média 4 sem.)
+• *N2 Special Cases* (special cases + ouvidoria + redes sociais + stores + canais especiais): *[N]* ([X%] do total)
+Total: *[N]* atendimentos no período
 
-*RecargaBot*
-• [N] contatos iniciados | Retenção: *[X%]* (Meta: — | sem. ant.: [X%])
+*Central de Ajuda — evolução* 📊
+Visitas únicas à vertical, últimas 5 semanas (agregado todas as verticais): [série] ([+/-X%] última semana)
+Top 3 produtos por volume de visitas: [produto 1] ([N]), [produto 2] ([N]), [produto 3] ([N])
+
+*RecargaBot — detalhe*
 • CSAT Bot: *[X pts]* | Resolutividade: *[X%]*
 • Top 3 motivos de não-retenção
 
-*Customer Service N1*
-• *[N] atendimentos humanos* ([+/-X%] vs sem. ant. | [+/-X%] vs média 4 sem.)
-• Canais: Chat [X%] · C2C [X%] · E-mail [X%]
+*N1 Humano — detalhe*
 • CSAT N1: *[X pts]* (Meta: 80% | Resolutividade: [X%])
 
-*Special Cases N2*
-• *[N] contatos* · Reclame Aqui: [N] · Ouvidoria: [N] · Consumidor.gov: [N]
+*N2 Special Cases — detalhe*
 • Sentimento predominante: [positivo/negativo/neutro]
 
 ─────────────────────────────
@@ -261,9 +278,12 @@ contexto de gestão ativo. Identificar os 2–3 resultados mais relevantes para 
 *VOLUME DE SUPORTE*
 
 *[N] atendimentos totais* ([+/-X%] vs sem. ant.)
-• RecargaBot resolveu *[X%]* dos contatos (Retenção)
-• N1 humano: *[N]* atendimentos · N2 Special Cases: *[N]*
+• *RecargaBot (retido):* *[N]* ([X%] do total) — Retenção: *[X%]*
+• *N1 Humano* (chat online + c2c + e-mail): *[N]* ([X%] do total)
+• *N2 Special Cases* (special cases + ouvidoria + redes sociais + stores + canais especiais): *[N]* ([X%] do total)
 • Vertical de maior volume: [vertical] — [motivo principal]
+
+*Central de Ajuda:* [N] visitas únicas no período ([+/-X%] vs sem. ant.) — Top produto: [produto] ([N])
 
 ─────────────────────────────
 *EVENTOS E IMPACTOS DA SEMANA* 💬
@@ -314,7 +334,7 @@ Priorizar na análise os motivos com maior variação WoW e os temas com mais di
 
 ─────────────────────────────
 *FUNIL DE SUPORTE — MINHA CONTA*
-[Funil completo: Central de Ajuda → Bot → N1 → N2]
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW | [+/-X%] vs média 4 sem.)
@@ -391,7 +411,7 @@ Por tipo de transação Pix (quando relevante):
 
 ─────────────────────────────
 *FUNIL DE SUPORTE — CARTÃO DE CRÉDITO*
-[Funil completo]
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW)
@@ -462,7 +482,7 @@ Para Conta Desativada e Carteira Desativada, separar por tipo de bloqueio (AUTO 
 *📊 Report VoC — [Conta Desativada / Carteira Desativada / Chargeback] · Semana NN*
 
 *FUNIL DE SUPORTE*
-[Funil completo para o produto]
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW)
@@ -517,7 +537,7 @@ Ler `#investments-e-cx` dos últimos 7 dias.
 *📊 Report VoC — [CDB / Rendimento CDI / Movimentações] · Semana NN*
 
 *FUNIL DE SUPORTE*
-[Funil completo]
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW)
@@ -576,7 +596,7 @@ Ler `#melhoria-continua-verticais` dos últimos 7 dias.
 *📊 Report VoC — Transporte · Semana NN*
 
 *FUNIL DE SUPORTE — TRANSPORTE*
-[Funil completo]
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW | [+/-X%] vs média 4 sem.)
@@ -640,7 +660,7 @@ Ler `#pixcc-home-raf-cx` dos últimos 7 dias.
 *📊 Report VoC — Pix · Semana NN*
 
 *FUNIL DE SUPORTE — PIX*
-[Funil completo]
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW)
@@ -700,7 +720,7 @@ Ler `#squad_loan_seguimento` dos últimos 7 dias.
 *📊 Report VoC — Empréstimo · Semana NN*
 
 *FUNIL DE SUPORTE — EMPRÉSTIMO*
-[Funil completo]
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW)
@@ -751,7 +771,7 @@ Atenção ao perfil PJ — lojistas têm padrão de contato distinto de clientes
 *📊 Report VoC — [Tap to Pay / Link de Pagamento] · Semana NN*
 
 *FUNIL DE SUPORTE*
-[Funil completo]
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW)
