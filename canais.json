@@ -12,7 +12,10 @@
         "nome": "RecargaBot",
         "definicao": "retido, sem transbordo",
         "filtro": "flg_retention_bot = true",
-        "observacao": "Independente de canal -- flag propria"
+        "observacao": "Independente de canal -- flag propria",
+        "fonte_volume": "prod.cx.agg_overview (flg_retention_bot=true, ticket_count)",
+        "fonte_retencao_pct": "prod.cx.fat_botmaker_metrics (AVG(flg_retention) por entry_theme, creation_date)",
+        "observacao_retencao": "NAO usar CX-005 de cx-product-insights para o percentual -- fat_botmaker_metrics e mais granular (por entry_theme) e e a fonte correta"
       },
       {
         "nome": "N1 Humano",
