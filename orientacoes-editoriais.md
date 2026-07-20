@@ -181,7 +181,7 @@ Top 3 produtos por volume de visitas: [produto 1] ([N]), [produto 2] ([N]), [pro
 
 *RecargaBot — detalhe*
 • CSAT Bot: *[X pts]* | Resolutividade: *[X%]*
-• Top 3 temas de não-retenção (fat_botmaker_metrics, entry_theme, menor pct_retencao)
+• Top 3 estágios de não-retenção (agg_botmaker_metrics, stage, menor pct_retencao) — indicar overflow vs abandono
 
 *N1 Humano — detalhe*
 • CSAT N1: *[X pts]* (Meta: 80% | Resolutividade: [X%])
