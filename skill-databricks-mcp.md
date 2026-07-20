@@ -740,3 +740,58 @@ WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
 GROUP BY i.faixa_investimento
 ORDER BY total_tickets DESC;
 ```
+
+---
+
+## 12. `prod.cx.fat_botmaker_metrics` — Retenção de Bot por tema (adicionado Jul/2026)
+
+**Fonte dedicada para % de retenção do RecargaBot** — mais granular que `agg_overview`,
+que só dá o volume (CX-004/CX-005 de `cx-product-insights`). Esta tabela traz o flag de
+retenção por atendimento individual, permitindo quebra por `entry_theme`.
+
+| Campo | Descrição |
+|---|---|
+| `entry_theme` | Tema de entrada no fluxo do bot |
+| `flg_retention` | 1 = retido pelo bot sem transbordo · 0 = transbordou para humano |
+| `creation_date` | Data de criação do atendimento |
+
+**Uso obrigatório:**
+- Substituir CX-005 (`cx-product-insights`) pelo cálculo direto nesta tabela sempre que o
+  report precisar do **percentual** de retenção (a Distribuição de Volume ainda usa
+  `agg_overview` para o volume absoluto do RecargaBot)
+- Usar a quebra por `entry_theme` para preencher "Top motivos de não-retenção" no template
+  de Funil de Suporte — ordenar por `pct_retencao ASC`, com `HAVING COUNT(*) >= 10` para
+  evitar destacar temas com amostra pequena demais para ser confiável
+
+```sql
+-- Retenção geral do período
+SELECT AVG(flg_retention) AS pct_retencao
+FROM prod.cx.fat_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}';
+
+-- Top 3 temas com pior retenção (maior transbordo)
+SELECT
+  entry_theme,
+  ROUND(AVG(flg_retention) * 100, 1) AS pct_retencao,
+  COUNT(*) AS volume
+FROM prod.cx.fat_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY entry_theme
+HAVING COUNT(*) >= 10
+ORDER BY pct_retencao ASC
+LIMIT 3;
+
+-- Série de 5 semanas (retenção geral)
+SELECT
+  DATE(DATE_TRUNC('week', creation_date)) AS semana,
+  ROUND(AVG(flg_retention) * 100, 1) AS pct_retencao,
+  COUNT(*) AS volume
+FROM prod.cx.fat_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO_SERIE}' AND '{DATA_FIM}'
+GROUP BY semana
+ORDER BY semana;
+```
+
+⚠️ Confirmar via `databricks_preview_query` se `entry_theme` bate com alguma dimensão de
+vertical do `canais.json` antes de tentar segmentar retenção por produto — pode ser uma
+taxonomia própria do fluxo de bot, distinta da Vertical usada no restante da Routine.
