@@ -58,10 +58,12 @@ Aplicar a todos os reports. A Routine usa estas definições para calcular e apr
 
 ### Retenção de Bot
 - **Definição:** % de contatos resolvidos pelo RecargaBot sem transbordo para humano
-- **Cálculo:** `AVG(flg_retention)` sobre sessões que entraram no bot (por `entry_theme`)
-- **Fonte:** `prod.cx.fat_botmaker_metrics` (atualizado Jul/2026 — ver nota de precedência em
-  `skill-databricks-mcp.md` §Retenção de Bot; fonte anterior `dim_zendesk_tickets_summary`
-  subestimava o valor por diluir o denominador com contatos que nunca tocaram o bot)
+- **Cálculo:** `SUM(retained_by_bot) / SUM(total_sessions)` — número "raw", sem excluir sessões
+  com `flg_retention_inactivity = true` (confirmado como definição oficial em 20/07/2026, apesar
+  de a tabela permitir segmentar retenção por inatividade vs. resolução ativa)
+- **Fonte:** `prod.cx.agg_botmaker_metrics` (atualizado Jul/2026 — ver nota de precedência em
+  `skill-databricks-mcp.md` §Retenção de Bot; fontes anteriores `dim_zendesk_tickets_summary` e
+  `fat_botmaker_metrics` subestimavam ou eram menos completas que esta)
 - **Apresentar:** % semanal + evolução nas últimas 5 semanas
 - **Granularidade:** `entry_theme` não cobre todas as verticais (ex: sem valor próprio para
   Carteira Desativada, RAF, Pix CC, Boleto de Cobrança, e "investimentos" agrega CDB+Rendimento

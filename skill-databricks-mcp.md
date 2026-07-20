@@ -638,18 +638,20 @@ GROUP BY perfil_cliente;
 
 ### Retenção de Bot
 
-> ⚠️ **Atualizado Jul/2026 — fonte oficial mudou.** A query antiga abaixo (via
-> `dim_zendesk_tickets_summary`, denominador = bot + humano) subestima a retenção real porque
-> dilui o resultado com contatos que nunca entraram no bot. Fonte correta agora é
-> `prod.cx.fat_botmaker_metrics`, medindo apenas sessões que entraram no RecargaBot:
+> ⚠️ **Atualizado Jul/2026 — fonte oficial final.** Passou por duas revisões na mesma semana:
+> `dim_zendesk_tickets_summary` (denominador bot+humano, subestimava) → `fat_botmaker_metrics`
+> (`AVG(flg_retention)`, intermediária) → **`agg_botmaker_metrics` (versão final confirmada em
+> 20/07/2026)**, com mais campos (CSAT, FCR, abandono, flag de inatividade) e o formato oficial
+> de agregação da squad de Botmaker.
 
 ```sql
--- Query oficial (Jul/2026 em diante)
+-- Query oficial (confirmada 20/07/2026)
 SELECT
     entry_theme,
-    COUNT(*) AS n,
-    AVG(flg_retention) AS pct_retencao
-FROM `prod`.`cx`.`fat_botmaker_metrics`
+    SUM(total_sessions) AS n,
+    SUM(retained_by_bot) AS retained,
+    ROUND(SUM(retained_by_bot) * 100.0 / NULLIF(SUM(total_sessions), 0), 1) AS pct_retencao
+FROM `prod`.`cx`.`agg_botmaker_metrics`
 WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
 GROUP BY entry_theme;
 ```
@@ -657,6 +659,14 @@ GROUP BY entry_theme;
 Para o número geral (todas as verticais), remover o `GROUP BY entry_theme` e agregar direto.
 Para série semanal, agrupar por `DATE_TRUNC('week', creation_date)` além de (ou no lugar de)
 `entry_theme`.
+
+**Usar sempre o número "raw"** (`retained_by_bot` sobre `total_sessions`, sem excluir
+`flg_retention_inactivity = true`) — confirmado como definição oficial em 20/07/2026. A tabela
+também permite calcular retenção excluindo sessões retidas só por inatividade
+(`SUM(CASE WHEN flg_retention_inactivity = false THEN retained_by_bot ELSE 0 END)`), o que dá um
+número bem mais baixo (~11% geral vs. ~65% raw na validação) — **não usar essa variante** para o
+report a menos que solicitado explicitamente; é uma leitura diferente (retenção por resolução
+ativa vs. retenção total).
 
 **Atenção:** `entry_theme` é mais grosso que a taxonomia de vertical usada em `agg_overview`/
 `dim_zendesk_tickets_summary` — ex: "investimentos" agrega CDB + Rendimento CDI + Movimentações

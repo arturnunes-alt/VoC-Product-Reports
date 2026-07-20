@@ -200,13 +200,19 @@ conforme regra fundamental da skill — `agg_overview` já tem essas dimensões.
 esse denominador inclui contatos que nunca entraram no fluxo do bot (ex: e-mail/C2C direto),
 diluindo a taxa para muito abaixo do real.
 
-**Fonte correta:** `prod.cx.fat_botmaker_metrics` — `AVG(flg_retention)` por `entry_theme`, medindo
-apenas sessões que de fato entraram no RecargaBot (ver query de referência em
-`skill-databricks-mcp.md` §Retenção de Bot). Essa é a única mudança de fonte para esta métrica —
-volume de tickets bot/N1/N2 do funil continua vindo de `agg_overview` normalmente.
+**Fonte correta e final:** `prod.cx.agg_botmaker_metrics` — `SUM(retained_by_bot) / SUM(total_sessions)`
+por `entry_theme` (ver query de referência em `skill-databricks-mcp.md` §Retenção de Bot). Essa é
+a única mudança de fonte para esta métrica — volume de tickets bot/N1/N2 do funil continua vindo
+de `agg_overview` normalmente.
 
-Validado em 20/07/2026: para a mesma semana, `agg_overview` deu 25,2% geral vs. 68,9% via
-`fat_botmaker_metrics` — diferença de metodologia (escopo do denominador), não erro de dado.
+**Usar o número "raw" (`retained_by_bot ÷ total_sessions`), sem excluir `flg_retention_inactivity`
+— confirmado como a definição oficial em 20/07/2026**, mesmo essa tabela tendo o flag disponível
+para segmentar retenção por inatividade vs. resolução ativa. Não usar `attended_by_bot` como
+denominador nem filtrar por `flg_retention_inactivity = false` a menos que explicitamente pedido.
+
+Histórico de validação (20/07/2026, mesma semana): `agg_overview` deu 25,2% geral → substituído por
+`fat_botmaker_metrics` (68,9%) → refinado para `agg_botmaker_metrics` raw (64,8%), a versão final.
+Cada mudança foi diferença de metodologia (escopo do denominador / tabela fonte), não erro de dado.
 
 **⛔ Nunca responder ou mencionar AU (CX-010) ou TX (CX-011) diretamente** — são insumo
 interno apenas de NFHR/Contact Rate, nunca métricas finais do report.
