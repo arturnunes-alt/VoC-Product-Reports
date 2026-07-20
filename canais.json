@@ -14,8 +14,9 @@
         "filtro": "flg_retention_bot = true",
         "observacao": "Independente de canal -- flag propria",
         "fonte_volume": "prod.cx.agg_overview (flg_retention_bot=true, ticket_count)",
-        "fonte_retencao_pct": "prod.cx.fat_botmaker_metrics (AVG(flg_retention) por entry_theme, creation_date)",
-        "observacao_retencao": "NAO usar CX-005 de cx-product-insights para o percentual -- fat_botmaker_metrics e mais granular (por entry_theme) e e a fonte correta"
+        "fonte_retencao_pct": "prod.cx.agg_botmaker_metrics (SUM(retained_by_bot)/SUM(total_sessions), por stage se necessario)",
+        "observacao_retencao": "NAO usar CX-005 de cx-product-insights nem fat_botmaker_metrics (descontinuado) -- agg_botmaker_metrics e a fonte correta, com detalhamento por stage, overflow e abandono",
+        "fonte_csat_bot": "prod.cx.agg_botmaker_metrics (SUM(csat_promoter)/SUM(csat_answered))"
       },
       {
         "nome": "N1 Humano",
