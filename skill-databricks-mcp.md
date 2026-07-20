@@ -636,7 +636,37 @@ GROUP BY perfil_cliente;
 
 ## Queries adicionais — adicionadas em Jul/2026
 
-### Retenção de Bot semanal
+### Retenção de Bot
+
+> ⚠️ **Atualizado Jul/2026 — fonte oficial mudou.** A query antiga abaixo (via
+> `dim_zendesk_tickets_summary`, denominador = bot + humano) subestima a retenção real porque
+> dilui o resultado com contatos que nunca entraram no bot. Fonte correta agora é
+> `prod.cx.fat_botmaker_metrics`, medindo apenas sessões que entraram no RecargaBot:
+
+```sql
+-- Query oficial (Jul/2026 em diante)
+SELECT
+    entry_theme,
+    COUNT(*) AS n,
+    AVG(flg_retention) AS pct_retencao
+FROM `prod`.`cx`.`fat_botmaker_metrics`
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY entry_theme;
+```
+
+Para o número geral (todas as verticais), remover o `GROUP BY entry_theme` e agregar direto.
+Para série semanal, agrupar por `DATE_TRUNC('week', creation_date)` além de (ou no lugar de)
+`entry_theme`.
+
+**Atenção:** `entry_theme` é mais grosso que a taxonomia de vertical usada em `agg_overview`/
+`dim_zendesk_tickets_summary` — ex: "investimentos" agrega CDB + Rendimento CDI + Movimentações
+Financeiras num só valor, e não há `entry_theme` próprio para Carteira Desativada, RAF, Pix CC
+ou Boleto de Cobrança (ficam implícitos em outros valores ou ausentes). Para essas verticais,
+não é possível abrir a retenção de bot com a mesma granularidade — omitir a métrica ao invés de
+estimar por aproximação.
+
+<details>
+<summary>Query anterior (deprecada para este fim — mantida só como referência histórica)</summary>
 
 ```sql
 SELECT
@@ -655,6 +685,7 @@ WHERE DATE(created_at_br) BETWEEN '{DATA_INICIO_SERIE}' AND '{DATA_FIM}'
 GROUP BY semana
 ORDER BY semana;
 ```
+</details>
 
 ### CSAT RecargaBot por semana
 

@@ -182,7 +182,7 @@ de montar qualquer query.
 | CSAT | CX-002 | Seção "Satisfação do Cliente" — já inclui filtro de canal N1 embutido na métrica |
 | Tickets (Contatos) | CX-003 | Volume N1 do funil |
 | Tickets Bot | CX-004 | Volume Bot do funil |
-| Retenção Bot | CX-005 | Funil — % retenção |
+| Retenção Bot | CX-005 (⚠️ ver exceção abaixo) | Funil — % retenção |
 | HCE | CX-006 | Funil — Central de Ajuda |
 | NFHR | CX-007 | Report Geral apenas — denominador é TX, não AU |
 | Contact Rate | CX-008 | Report Geral apenas — denominador é TX, não AU |
@@ -192,6 +192,21 @@ de montar qualquer query.
 
 **Rankings de motivo de contato e causa raiz:** usar `agg_overview` (não `dim_zendesk_tickets_summary`)
 conforme regra fundamental da skill — `agg_overview` já tem essas dimensões.
+
+### ⚠️ Exceção — Retenção de Bot (CX-005), atualizado Jul/2026
+
+**Não usar `agg_overview` para o percentual de Retenção de Bot.** A fórmula `flg_retention_bot ÷
+(flg_retention_bot + flg_human)` mede a fatia do funil total (bot + humano) resolvida pelo bot —
+esse denominador inclui contatos que nunca entraram no fluxo do bot (ex: e-mail/C2C direto),
+diluindo a taxa para muito abaixo do real.
+
+**Fonte correta:** `prod.cx.fat_botmaker_metrics` — `AVG(flg_retention)` por `entry_theme`, medindo
+apenas sessões que de fato entraram no RecargaBot (ver query de referência em
+`skill-databricks-mcp.md` §Retenção de Bot). Essa é a única mudança de fonte para esta métrica —
+volume de tickets bot/N1/N2 do funil continua vindo de `agg_overview` normalmente.
+
+Validado em 20/07/2026: para a mesma semana, `agg_overview` deu 25,2% geral vs. 68,9% via
+`fat_botmaker_metrics` — diferença de metodologia (escopo do denominador), não erro de dado.
 
 **⛔ Nunca responder ou mencionar AU (CX-010) ou TX (CX-011) diretamente** — são insumo
 interno apenas de NFHR/Contact Rate, nunca métricas finais do report.
