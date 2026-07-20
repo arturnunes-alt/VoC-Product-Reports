@@ -5,34 +5,37 @@
     "timezone_zendesk": "UTC — somar 3h ao horário BRT nas queries"
   },
   "funil_suporte": {
-    "descricao": "Separação obrigatória em todas as análises",
+    "descricao": "Distribuicao de volume obrigatoria em TODOS os reports (Geral, Executivo, Produtos) -- decisao de negocio da VoC, distinta do channel_class4 oficial da organizacao",
+    "fonte": "prod.cx.agg_overview (via cx-product-insights) para volume; fat_help_center_events / CX-009 para Central de Ajuda",
     "camadas": [
       {
-        "nome": "Central de Ajuda",
-        "fonte": "prod.cx.fat_help_center_events ou Amplitude",
-        "filtro": "segmentar sempre por event_category: 'artigo' (top artigos), 'vertical' (gap de conteudo), 'pesquisa' (termos buscados), 'ajuda' (volume topo do funil)",
-        "coluna_vertical": "coluna propria 'vertical' -- independente do event_category"
-      },
-      {
         "nome": "RecargaBot",
-        "fonte": "dim_zendesk_tickets_summary",
-        "filtro": "flg_retention_bot = true"
+        "definicao": "retido, sem transbordo",
+        "filtro": "flg_retention_bot = true",
+        "observacao": "Independente de canal -- flag propria"
       },
       {
-        "nome": "Customer Service N1",
-        "fonte": "dim_zendesk_tickets_summary",
-        "filtro": "flg_human = true AND flg_invalid_bot = false AND flg_retention_bot = false AND friendly_service_channel <> 'derivacao' AND flg_duplicate = false"
+        "nome": "N1 Humano",
+        "definicao": "chat online + c2c + e-mail",
+        "filtro": "flg_human = true AND friendly_service_channel IN ('chat online', 'c2c', 'e-mail')",
+        "observacao": "NAO inclui social media, mesmo classificado como n1 pelo channel_class4 oficial"
       },
       {
-        "nome": "Special Cases N2",
-        "fonte": "dim_zendesk_tickets_summary",
-        "filtro": "key_channel REGEXP 'ouvidoria|reclameaqui|consumidor\\.gov|bacen|procon|redes.sociais'"
+        "nome": "N2 Special Cases",
+        "definicao": "special cases + ouvidoria + redes sociais + stores + canais especiais",
+        "filtro": "flg_human = true AND friendly_service_channel IN ('special cases', 'ouvidoria', 'social media', 'stores', 'canais especiais')",
+        "observacao": "redes sociais (friendly_service_channel='social media') entra aqui por decisao editorial da VoC, nao por channel_class4"
       }
     ],
+    "central_de_ajuda": {
+      "metrica": "CX-009 Visitas Unicas Vertical (cx-product-insights)",
+      "filtro": "source='central' AND metric='vertical' AND product='total' AND vertical IS NOT NULL",
+      "apresentar": "serie de 5 semanas, por produto em todo report de produto; agregado no Geral/Executivo"
+    },
     "excluir_sempre": [
+      "friendly_service_channel = 'derivacao'",
       "flg_invalid_bot = true",
-      "key_channel LIKE '%deriva%'",
-      "tags: created_for_side_conversation, qa-user, spam, ticket_fundido, closed_by_merge, fluxo_automatico_sem_interacao"
+      "ver lista completa em cx-orchestrator-reference/references/exclusions.md"
     ]
   },
   "indicadores": {
