@@ -743,55 +743,152 @@ ORDER BY total_tickets DESC;
 
 ---
 
-## 12. `prod.cx.fat_botmaker_metrics` — Retenção de Bot por tema (adicionado Jul/2026)
+## 12. `prod.cx.agg_botmaker_metrics` — Retenção de Bot, CSAT e detalhamento por estágio (Jul/2026)
 
-**Fonte dedicada para % de retenção do RecargaBot** — mais granular que `agg_overview`,
-que só dá o volume (CX-004/CX-005 de `cx-product-insights`). Esta tabela traz o flag de
-retenção por atendimento individual, permitindo quebra por `entry_theme`.
+**Fonte dedicada para % de retenção do RecargaBot, CSAT do bot e análise por estágio do
+fluxo** — substitui qualquer tentativa de calcular retenção a partir de `agg_overview`
+(que só dá volume via `flg_retention_bot`, sem o detalhamento de sessão que esta tabela
+oferece). Também substitui a orientação anterior de usar `fat_botmaker_metrics`.
 
-| Campo | Descrição |
+| Coluna | Descrição |
 |---|---|
-| `entry_theme` | Tema de entrada no fluxo do bot |
-| `flg_retention` | 1 = retido pelo bot sem transbordo · 0 = transbordou para humano |
-| `creation_date` | Data de criação do atendimento |
+| `creation_date` | Data da sessão |
+| `stage` | Estágio/etapa do fluxo do bot |
+| `total_sessions` | Total de sessões — denominador da retenção |
+| `attended_by_bot` | Sessões atendidas pelo bot |
+| `retained_by_bot` | Sessões retidas sem transbordo — numerador da retenção |
+| `overflow` | Transbordo intencional para humano |
+| `passive_abandonment` | Cliente abandonou por inatividade |
+| `active_abandonment` | Cliente saiu voluntariamente da sessão |
+| `csat_promoter` / `csat_answered` | CSAT do bot: `csat_promoter / csat_answered` |
+| `fcr_bot_stage_count` | Resolução no primeiro contato, por estágio |
+| `integration_error_api` | Erros de integração via API |
+| `no_continuity_count` | Sessões sem continuidade |
+| `msg_user_sum` / `msg_bot_sum` | Volume de mensagens trocadas |
+| `resolution_seconds_sum/count` | Tempo de resolução (soma/contagem para média) |
+| `time_bot_seconds_sum/count` / `time_user_seconds_sum/count` | Tempo de processamento do bot vs tempo de resposta do usuário |
+| `not_understood_count_sum` | Vezes que o bot não entendeu a intenção |
+| `executing_intents_total_sum` | Total de intents executados |
+| `session_pct_not_understood_sum/count` | % de sessão com trechos não compreendidos |
+| `flg_retention_inactivity` | Separa retenção "real" de retenção por inatividade (falso encerramento) |
+| `flg_hyperpersonalized` / `flg_generative` / `flg_static` | Classificam o fluxo: Hiper / Generativo / Estático / Outro (mutuamente exclusivos, checar nesta ordem) |
 
-**Uso obrigatório:**
-- Substituir CX-005 (`cx-product-insights`) pelo cálculo direto nesta tabela sempre que o
-  report precisar do **percentual** de retenção (a Distribuição de Volume ainda usa
-  `agg_overview` para o volume absoluto do RecargaBot)
-- Usar a quebra por `entry_theme` para preencher "Top motivos de não-retenção" no template
-  de Funil de Suporte — ordenar por `pct_retencao ASC`, com `HAVING COUNT(*) >= 10` para
-  evitar destacar temas com amostra pequena demais para ser confiável
+### Query — retenção geral do período
 
 ```sql
--- Retenção geral do período
-SELECT AVG(flg_retention) AS pct_retencao
-FROM prod.cx.fat_botmaker_metrics
+SELECT
+  SUM(retained_by_bot) AS retido,
+  SUM(total_sessions) AS total,
+  ROUND(SUM(retained_by_bot) / NULLIF(SUM(total_sessions), 0) * 100, 1) AS pct_retencao
+FROM prod.cx.agg_botmaker_metrics
 WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}';
-
--- Top 3 temas com pior retenção (maior transbordo)
-SELECT
-  entry_theme,
-  ROUND(AVG(flg_retention) * 100, 1) AS pct_retencao,
-  COUNT(*) AS volume
-FROM prod.cx.fat_botmaker_metrics
-WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
-GROUP BY entry_theme
-HAVING COUNT(*) >= 10
-ORDER BY pct_retencao ASC
-LIMIT 3;
-
--- Série de 5 semanas (retenção geral)
-SELECT
-  DATE(DATE_TRUNC('week', creation_date)) AS semana,
-  ROUND(AVG(flg_retention) * 100, 1) AS pct_retencao,
-  COUNT(*) AS volume
-FROM prod.cx.fat_botmaker_metrics
-WHERE creation_date BETWEEN '{DATA_INICIO_SERIE}' AND '{DATA_FIM}'
-GROUP BY semana
-ORDER BY semana;
 ```
 
-⚠️ Confirmar via `databricks_preview_query` se `entry_theme` bate com alguma dimensão de
-vertical do `canais.json` antes de tentar segmentar retenção por produto — pode ser uma
-taxonomia própria do fluxo de bot, distinta da Vertical usada no restante da Routine.
+### Query — CSAT do bot
+
+```sql
+SELECT
+  ROUND(SUM(csat_promoter) / NULLIF(SUM(csat_answered), 0) * 100, 1) AS csat_bot_pct
+FROM prod.cx.agg_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}';
+```
+
+### Query — ranking de estágios (`stage_rank`, adaptado do exemplo fornecido)
+
+```sql
+SELECT
+  stage,
+  SUM(total_sessions) AS sess,
+  SUM(retained_by_bot) AS ret,
+  SUM(fcr_bot_stage_count) AS fcr,
+  SUM(csat_promoter) AS cprom,
+  SUM(csat_answered) AS cans,
+  ROUND(SUM(retained_by_bot) / NULLIF(SUM(total_sessions), 0) * 100, 1) AS pct_retencao
+FROM prod.cx.agg_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}' AND stage IS NOT NULL
+GROUP BY stage
+ORDER BY sess DESC
+LIMIT 18;
+```
+
+Para "Top temas de não-retenção" do template de report: mesma query, mas ordenar por
+`pct_retencao ASC` com `HAVING SUM(total_sessions) >= 10`, e olhar `overflow` vs
+`passive_abandonment`/`active_abandonment` do estágio para explicar a causa.
+
+### Query — série diária completa (`daily_main`, adaptado do exemplo fornecido)
+
+```sql
+SELECT
+  creation_date AS d,
+  SUM(total_sessions) AS total,
+  SUM(attended_by_bot) AS att,
+  SUM(retained_by_bot) AS ret,
+  SUM(overflow) AS ovf,
+  SUM(passive_abandonment) AS pab,
+  SUM(active_abandonment) AS aab,
+  SUM(csat_promoter) AS cprom,
+  SUM(csat_answered) AS cans,
+  SUM(integration_error_api) AS integ,
+  SUM(no_continuity_count) AS noc,
+  SUM(msg_user_sum) AS mu,
+  SUM(msg_bot_sum) AS mb,
+  SUM(resolution_seconds_sum) AS rs,
+  SUM(resolution_seconds_count) AS rc,
+  SUM(CASE WHEN flg_retention_inactivity = false THEN resolution_seconds_sum ELSE 0 END) AS rs_no,
+  SUM(CASE WHEN flg_retention_inactivity = false THEN resolution_seconds_count ELSE 0 END) AS rc_no,
+  SUM(time_bot_seconds_sum) AS tbs,
+  SUM(time_bot_seconds_count) AS tbc,
+  SUM(time_user_seconds_sum) AS tus,
+  SUM(time_user_seconds_count) AS tuc,
+  SUM(not_understood_count_sum) AS nu,
+  SUM(executing_intents_total_sum) AS ei,
+  SUM(CASE WHEN flg_hyperpersonalized THEN total_sessions ELSE 0 END) AS sess_hyper,
+  SUM(CASE WHEN NOT flg_hyperpersonalized AND flg_generative THEN total_sessions ELSE 0 END) AS sess_gen,
+  SUM(CASE WHEN NOT flg_hyperpersonalized AND NOT flg_generative AND flg_static THEN total_sessions ELSE 0 END) AS sess_static,
+  SUM(CASE WHEN flg_hyperpersonalized THEN retained_by_bot ELSE 0 END) AS ret_hyper,
+  SUM(CASE WHEN flg_hyperpersonalized = false THEN retained_by_bot ELSE 0 END) AS ret_gen
+FROM prod.cx.agg_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO_SERIE}' AND '{DATA_FIM}'
+GROUP BY creation_date
+ORDER BY creation_date;
+```
+
+Usar para montar a série de 5 semanas de retenção e CSAT do bot (agregar por semana com
+`DATE_TRUNC('week', creation_date)` sobre o resultado diário).
+
+### Query — abertura por tipo de fluxo (`flow_daily`, adaptado do exemplo fornecido)
+
+```sql
+SELECT
+  creation_date AS d,
+  CASE
+    WHEN flg_hyperpersonalized THEN 'Hiper'
+    WHEN flg_generative THEN 'Generativo'
+    WHEN flg_static THEN 'Estatico'
+    ELSE 'Outro'
+  END AS fluxo,
+  SUM(total_sessions) AS sess,
+  SUM(csat_promoter) AS cprom,
+  SUM(csat_answered) AS cans
+FROM prod.cx.agg_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY creation_date, fluxo
+ORDER BY creation_date;
+```
+
+Opcional — usar em "Destaques da semana" apenas se houver variação relevante entre tipos
+de fluxo (ex: queda de CSAT concentrada no fluxo Generativo, não no Estático).
+
+### Regras de uso
+
+- **Retenção e CSAT do bot vêm sempre desta tabela**, nunca de `agg_overview` ou de
+  cálculo manual a partir de tickets.
+- **Volume absoluto do RecargaBot** (para a seção "Distribuição de Volume de Atendimento")
+  continua vindo de `agg_overview` (`flg_retention_bot = true`, `ticket_count`) — as duas
+  fontes não são substitutas uma da outra, cobrem perguntas diferentes.
+- `overflow` explica transbordo **intencional** (o bot decidiu escalar); `passive_abandonment`
+  e `active_abandonment` explicam **desistência do cliente** — nunca tratar os três como
+  sinônimo de "não retenção" sem diferenciar a causa no report.
+- Confirmar via `databricks_preview_query` se `stage` tem alguma correspondência com as
+  verticais do `canais.json` antes de tentar segmentar retenção por produto — pode ser uma
+  taxonomia própria do fluxo de bot, distinta da Vertical usada no restante da Routine.
