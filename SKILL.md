@@ -5,7 +5,7 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "1.4"
+version: "1.5"
 model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
@@ -379,31 +379,90 @@ Semana atual: *62 pts* (+4 vs sem. ant.) | Meta: 75
 
 ## TEMPLATE DE REPORT — FUNIL DE SUPORTE
 
-Incluir em todos os reports (geral e produtos). Montar com dados do Databricks e
-`prod.cx.fat_help_center_events` (ou Amplitude quando disponível).
+Incluir em **todos** os reports sem exceção: Report Geral, Report Executivo e todos os
+Reports de Produto. Montar com dados de `prod.cx.agg_overview` (via
+`cx-product-insights`) e `prod.cx.fat_help_center_events`.
+
+### Definição exata dos 3 grupos de Distribuição de Volume
+
+**Fonte de canal:** `friendly_service_channel` (via `agg_overview` ou `dim_zendesk_tickets_summary`).
+Ver mapeamento completo em
+`/mnt/skills/organization/cx-orchestrator-reference/references/channel-mapping.md`.
+
+| Grupo | Filtro | Observação |
+|---|---|---|
+| **RecargaBot** (retido, sem transbordo) | `flg_retention_bot = true` | Independente de canal — flag própria |
+| **N1 Humano** | `flg_human = true AND friendly_service_channel IN ('chat online', 'c2c', 'e-mail')` | Somente estes 3 canais — **não inclui** "social media", mesmo que a organização classifique social media como `channel_class4 = 'n1'` |
+| **N2 Special Cases** | `flg_human = true AND friendly_service_channel IN ('special cases', 'ouvidoria', 'social media', 'stores', 'canais especiais')` | Agrupamento de negócio específico desta Routine — "redes sociais" entra aqui por decisão editorial, não por `channel_class4` da organização |
+
+⚠️ **Este agrupamento é uma decisão de negócio da VoC, diferente do `channel_class4`
+oficial da organização** (que classifica social media como N1). Não "corrigir" para bater
+com `channel_class4` — a distribuição desta Routine é intencionalmente diferente.
+
+Tickets com `friendly_service_channel = 'derivacao'` são sempre excluídos de todos os
+grupos (side conversations).
+
+### Query de referência
+
+```sql
+SELECT
+  date,
+  SUM(CASE WHEN flg_retention_bot = true THEN ticket_count END) AS bot,
+  SUM(CASE WHEN flg_human = true
+           AND friendly_service_channel IN ('chat online','c2c','e-mail')
+       THEN ticket_count END) AS n1_humano,
+  SUM(CASE WHEN flg_human = true
+           AND friendly_service_channel IN ('special cases','ouvidoria','social media','stores','canais especiais')
+       THEN ticket_count END) AS n2_special_cases
+FROM prod.cx.agg_overview
+WHERE source = 'tickets'
+  AND friendly_service_channel <> 'derivacao'
+GROUP BY date
+ORDER BY date
+```
+
+### Central de Ajuda — evolução por produto
+
+Usar CX-009 (`Visitas Únicas Vertical`) de `cx-product-insights`, filtrado por vertical,
+com série das últimas 5 semanas — **incluir em todo report de produto**, não só no Geral.
+Para o Report Geral/Executivo, apresentar o agregado de todas as verticais.
+
+```sql
+SELECT
+  date,
+  SUM(CASE WHEN metric = 'vertical' AND product = 'total' AND vertical = '{VERTICAL}'
+      THEN visit_unic_count END) AS visitas_unicas
+FROM prod.cx.agg_overview
+WHERE source = 'central'
+GROUP BY date
+ORDER BY date
+```
+
+### Template de apresentação (Slack)
 
 ```
 *FUNIL DE SUPORTE*
 
-*Central de Ajuda*
-• [N] acessos no período (event_category=ajuda) | Top artigos: [art.1] ([N]), [art.2] ([N])
-• [X%] avançaram para RecargaBot ou automações
-• [Apenas se relevante] Gap de conteúdo: [N] buscas/navegações por vertical sem artigo popular correspondente
+*Distribuição de Volume de Atendimento*
+• *RecargaBot (retido):* *[N]* ([X%] do total) | Retenção: *[X%]* (sem. ant.: [X%])
+• *N1 Humano* (chat online + c2c + e-mail): *[N]* ([X%] do total) ([+/-X%] WoW)
+• *N2 Special Cases* (special cases + ouvidoria + redes sociais + stores + canais especiais): *[N]* ([X%] do total) ([+/-X%] WoW)
+Total: *[N]* atendimentos no período
 
-*RecargaBot*
-• [N] contatos iniciados | Retenção: *[X%]* (sem. ant.: [X%]) | Meta: —
-• CSAT Bot: *[X%]* satisfeitos | Resolutividade: *[X%]*
+*Central de Ajuda — evolução*
+Visitas únicas à vertical, últimas 5 semanas: [série] ([+/-X%] última semana)
+[Apenas Report Geral/Executivo] Top 3 produtos por volume de visitas: [produto 1] ([N]), [produto 2] ([N])
+
+*RecargaBot — detalhe*
+• CSAT Bot: *[X%]* satisfeitos | Resolutividade: *[X%]* (se disponível)
 • Top motivos de não-retenção: [motivo 1] · [motivo 2]
 
-*Customer Service N1 (humano)*
-• *[N] atendimentos* ([+/-X%] WoW | [+/-X%] vs média 4 sem.)
-• Canais: Chat [X%] · C2C [X%] · E-mail [X%]
+*N1 Humano — detalhe*
 • CSAT N1: *[X%]* satisfeitos | Resolutividade: *[X%]*
-• Últimas 5 semanas: [série de volume]
+• Últimas 5 semanas (volume): [série]
 
-*Special Cases N2*
-• *[N] contatos* · Reclame Aqui: [N] · Ouvidoria: [N] · Consumidor.gov: [N]
-• Sentimento: [predominante] | Temas: [temas principais]
+*N2 Special Cases — detalhe*
+• Sentimento predominante: [positivo/negativo/neutro] | Temas principais: [temas]
 ```
 
 ---
