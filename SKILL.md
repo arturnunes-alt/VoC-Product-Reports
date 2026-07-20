@@ -5,7 +5,7 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "1.5"
+version: "1.6"
 model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
@@ -402,7 +402,36 @@ com `channel_class4` — a distribuição desta Routine é intencionalmente dife
 Tickets com `friendly_service_channel = 'derivacao'` são sempre excluídos de todos os
 grupos (side conversations).
 
-### Query de referência
+### Retenção de Bot — fonte dedicada (não usar CX-005 de cx-product-insights)
+
+**O volume** de contatos do RecargaBot (para a Distribuição de Volume acima) continua
+vindo de `agg_overview` (`flg_retention_bot = true`, `ticket_count`).
+
+**O percentual de retenção** e o detalhamento por tema usam uma fonte diferente e mais
+granular: `prod.cx.fat_botmaker_metrics`, com o flag `flg_retention` por `entry_theme`.
+
+```sql
+-- Retenção geral do período
+SELECT AVG(flg_retention) AS pct_retencao
+FROM prod.cx.fat_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+
+-- Retenção por tema — usar para "Top motivos de não-retenção"
+SELECT
+  entry_theme,
+  AVG(flg_retention) AS pct_retencao,
+  COUNT(*) AS volume
+FROM prod.cx.fat_botmaker_metrics
+WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY entry_theme
+HAVING COUNT(*) >= 10  -- evitar destacar tema com amostra irrelevante
+ORDER BY pct_retencao ASC
+```
+
+Os temas com **menor** `pct_retencao` (e volume relevante) são os "Top motivos de
+não-retenção" do template — maior taxa de transbordo para humano.
+
+### Query de referência — volume da Distribuição
 
 ```sql
 SELECT
@@ -455,7 +484,7 @@ Visitas únicas à vertical, últimas 5 semanas: [série] ([+/-X%] última seman
 
 *RecargaBot — detalhe*
 • CSAT Bot: *[X%]* satisfeitos | Resolutividade: *[X%]* (se disponível)
-• Top motivos de não-retenção: [motivo 1] · [motivo 2]
+• Top temas de não-retenção (via fat_botmaker_metrics, entry_theme): [tema 1] ([X%] retenção) · [tema 2] ([X%] retenção)
 
 *N1 Humano — detalhe*
 • CSAT N1: *[X%]* satisfeitos | Resolutividade: *[X%]*
