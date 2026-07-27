@@ -128,11 +128,15 @@ descontinuado que causa mesclagem incorreta de volume). Ver lista completa de ex
 cx-orchestrator-reference/references/exclusions.md, não apenas este filtro isolado.
 
 EXECUÇÃO
-Execute as 5 fases em sequência sem interrupção. Se um MCP falhar após passar na
-validação inicial (falha durante a execução, não na checagem de tools), omita as
-seções afetadas e continue com os dados disponíveis. Priorize correlações claras
-entre eventos do Slack, dados quantitativos e análise qualitativa dos tickets ao
-montar os destaques da semana e o report executivo.
+Execute as 5 fases em sequência sem interrupção. Na Fase 1, ler os últimos 14 dias de
+TODOS os canais de destino (não apenas o geral/executivo) e montar uma tabela única de
+eventos e incidentes de todas as squads — usar essa tabela completa, não filtrada, para
+correlacionar variações de qualquer indicador em qualquer report, mesmo quando o evento
+relevante veio de uma squad diferente da que está sendo reportada. Se um MCP falhar após
+passar na validação inicial (falha durante a execução, não na checagem de tools), omita
+as seções afetadas e continue com os dados disponíveis. Priorize correlações claras entre
+eventos do Slack (inclusive cruzadas entre squads), dados quantitativos e análise
+qualitativa dos tickets ao montar os destaques da semana e o report executivo.
 ```
 
 ### 3. Testar antes de ativar

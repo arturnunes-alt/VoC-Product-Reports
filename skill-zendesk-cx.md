@@ -301,26 +301,39 @@ Semana 23–29/06 BRT: `created>=2026-06-23T03:00:00Z created<=2026-06-30T03:00:
 
 ## 8. TAGS DE VERTICAL POR CANAL SLACK
 
-| Canal Slack | Vertical | Tags Zendesk live | Vertical DaaP (`agg_overview`) |
-|---|---|---|---|
-| `#account_cx` | Minha Conta | `minha_conta` `minha_conta_logado` | `minha conta` |
-| `#cc-produto-e-cx` | Cartão de Crédito | `cartão_de_crédito_da_recargapay` | `cartao de credito do recargapay` |
-| `#cx_fraud` | Conta Desativada | `conta_desativada` | `conta desativada` |
-| `#cx_fraud` | Carteira Desativada | `carteira_desativada` | `carteira desativada` |
-| `#cx_fraud` | Chargeback Recovery | `chargeback_recovery_vertical` | `chargeback recovery` |
-| `#investments-e-cx` | CDB | `cdb` | `cdb` |
-| `#investments-e-cx` | Rendimento CDI | `rendimento_cdi` | `rendimento cdi` |
-| `#investments-e-cx` | Movimentações Fin. | `movimentações_financeiras` | `movimentacoes financeiras` |
-| `#melhoria-continua-verticais` | Transporte | `transporte_vertical` | `transporte` |
-| `#melhoria-continua-verticais` | Contas e Boletos | `contas_e_boletos_` | `contas e boletos` |
-| `#melhoria-continua-verticais` | Boleto de Cobrança | `boleto_de_cobrança` | `boleto de cobranca` |
-| `#melhoria-continua-verticais` | Recarga de Celular | `recarga_de_celular_vertical` | `recarga de celular` |
-| `#pixcc-home-raf-cx` | Pix (In/Out/Chaves) | `pix-in` `pix-out` `pix-chaves_pix` | `pix` |
-| `#pixcc-home-raf-cx` | Pix CC | `CONFIRMAR_TAG_PIX_CC` | `pix cartao` |
-| `#pixcc-home-raf-cx` | RAF | `raf-indicado` `raf-indicador` | `raf` |
-| `#squad_loan_seguimento` | Empréstimo | `empréstimo_` `empréstimo_crédito_consignado` | `emprestimo` |
-| `#subacquirer-cx` | Tap to Pay | `tap_to_pay` | `tap to pay` |
-| `#subacquirer-cx` | Link de Pagamento | `link_de_pagamento` | `link de pagamento` |
+> ⚠️ **Correções empíricas Jul/2026** — o `agg_overview` não separa todas as verticais
+> no mesmo nível de detalhe que o Zendesk live ou o `dim_zendesk_tickets_summary`. Quando
+> a coluna "Vertical `agg_overview`" abaixo estiver marcada como **agregada**, use
+> `dim_zendesk_tickets_summary` (campo `vertical`, com acentuação) para obter o corte fino
+> — o `agg_overview` vai retornar o grupo maior, misturando produtos.
+
+| Canal Slack | Vertical | Tags Zendesk live | Vertical `agg_overview` | Observação |
+|---|---|---|---|---|
+| `#account_cx` | Minha Conta | `minha_conta` `minha_conta_logado` | `minha conta` | OK — separada |
+| `#cc-produto-e-cx` | Cartão de Crédito | `cartão_de_crédito_da_recargapay` | `cartao de credito do recargapay` | OK — separada |
+| `#cx_fraud` | Conta Desativada | `conta_desativada` | `conta desativada` | OK — separada |
+| `#cx_fraud` | Carteira Desativada | `carteira_desativada` | `carteira desativada` | OK — separada |
+| `#cx_fraud` | Chargeback Recovery | `chargeback_recovery_vertical` | `chargeback recovery` | OK — separada |
+| `#investments-e-cx` | CDB | `cdb` | `cdb` | OK — separada |
+| `#investments-e-cx` | Rendimento CDI | `rendimento_cdi` | ⚠️ **`cashback e rendimento`** (agregada) | Misturada com cashback geral no `agg_overview` — usar `dim_zendesk_tickets_summary` (`vertical='rendimento cdi'`) para isolar |
+| `#investments-e-cx` | Movimentações Fin. | `movimentações_financeiras` | `movimentacoes financeiras` | OK — separada |
+| `#melhoria-continua-verticais` | Transporte | `transporte_vertical` | `transporte` | OK — separada |
+| `#melhoria-continua-verticais` | Contas e Boletos | `contas_e_boletos_` | ⚠️ **`utilities`** (agregada) | Junto com Boleto de Cobrança no `agg_overview` — usar `dim_zendesk_tickets_summary` (`vertical='contas e boletos'`) para isolar |
+| `#melhoria-continua-verticais` | Boleto de Cobrança | `boleto_de_cobrança` | ⚠️ **`utilities`** (agregada) | Junto com Contas e Boletos no `agg_overview` — usar `dim_zendesk_tickets_summary` (`vertical='boleto de cobrança'`) para isolar |
+| `#melhoria-continua-verticais` | Recarga de Celular | `recarga_de_celular_vertical` | **`topup`** | Não estava documentado antes — mapeia limpo, sem agregação |
+| `#pixcc-home-raf-cx` | Pix (In/Out/Chaves) | `pix-in` `pix-out` `pix-chaves_pix` | ⚠️ **`pix`** (agregada, sem subtipo) | `agg_overview` não separa In/Out/Chaves — usar `dim_zendesk_tickets_summary` com `vertical LIKE 'pix::%'` para o subtipo |
+| `#pixcc-home-raf-cx` | Pix CC | não tem tag própria | ⚠️ **`pix`** (agregada) | Ver §5 — identificar via busca textual, não por vertical |
+| `#pixcc-home-raf-cx` | RAF | `raf-indicado` `raf-indicador` | ⚠️ **`raf`** (agregada, sem subtipo) | `agg_overview` não separa Indicado/Indicador — usar `dim_zendesk_tickets_summary` com `vertical LIKE 'raf::%'` para o subtipo |
+| `#squad_loan_seguimento` | Empréstimo | `empréstimo_` `empréstimo_crédito_consignado` | `emprestimo` | OK — separada |
+| `#subacquirer-cx` | Tap to Pay | `tap_to_pay` | `tap to pay` | OK — separada |
+| `#subacquirer-cx` | Link de Pagamento | `link_de_pagamento` | `link de pagamento` | OK — separada |
+
+**Regra geral:** para qualquer vertical marcada como agregada acima, o número oficial de
+volume/NPS/CSAT (via `cx-product-insights`/`agg_overview`) só está disponível no nível do
+grupo maior. Para reportar o produto específico com precisão, complementar com uma query
+em `dim_zendesk_tickets_summary` filtrando o `vertical` exato — isso vale só para volume e
+motivos/causas nessas verticais específicas; NPS/CSAT continuam vindo de `agg_overview` no
+nível agregado disponível (sinalizar essa limitação no report quando relevante).
 
 ---
 

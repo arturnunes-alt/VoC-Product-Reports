@@ -5,7 +5,7 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "1.7"
+version: "1.9"
 model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
@@ -135,32 +135,68 @@ Se o arquivo não existir: prosseguir com os templates padrão deste SKILL.md.
 
 ---
 
-## FASE 1 — LEITURA DE CONTEXTO (Slack)
+## FASE 1 — COLETA CONSOLIDADA DE EVENTOS E INCIDENTES (todos os canais, 14 dias)
 
-**Objetivo:** Identificar eventos, incidentes e comunicados recentes que possam
-explicar variações de volume ou CSAT nos reports.
+**Objetivo:** Construir uma tabela única de eventos/incidentes de **todos os squads**,
+antes de gerar qualquer report, para permitir correlação cruzada — um evento reportado
+no canal de uma squad pode explicar variação de volume ou indicador em outra vertical
+completamente diferente.
 
 **Ferramenta:** Slack MCP
 
-**Canais a ler (últimos 7 dias):**
--  — contexto executivo e decisões de gestão
--  — comunicados operacionais e de produto
-- Canal de cada squad correspondente ao report sendo gerado — temas ativos da squad
+**Canais a ler (últimos 14 dias, todos, sem exceção):**
+- `#the-cxm-house` — contexto geral do time CXM
+- `#lideres-cx-e-cxm` — contexto executivo e decisões de gestão
+- `#comunicados_e_atualizações_cx` — comunicados operacionais e de produto
+- `#account_cx`
+- `#cc-produto-e-cx`
+- `#cx_fraud`
+- `#investments-e-cx`
+- `#melhoria-continua-verticais`
+- `#pixcc-home-raf-cx`
+- `#squad_loan_seguimento`
+- `#subacquirer-cx`
 
-**O que extrair:**
-- Incidentes e instabilidades com data e produto afetado
-- Mudanças de produto, fluxo ou processo com impacto em atendimento
-- Ações realizadas pelo time (campanhas, treinamentos, correções)
-- Lançamentos, descontinuações ou alterações de regras
+Ler **todos** antes de montar qualquer report — não pular para os canais "próprios" de
+cada produto. O objetivo desta fase é ter o quadro completo antes de começar a análise.
 
-**Como usar:**
-- Armazenar internamente como lista de eventos com data, produto e descrição curta
-- Usar para identificar automaticamente os temas mais relevantes da semana por canal
-- Correlacionar variações de volume, NPS e CSAT com eventos identificados
-- Incorporar na seção "Destaques da semana" de cada report
-- Não mencionar quem enviou a mensagem — apenas data e conteúdo
+**O que extrair de cada canal:**
+- Incidentes e instabilidades — com data, produto(s) afetado(s) e status (ativo/resolvido)
+- Mudanças de produto, fluxo, regra ou processo com impacto potencial em atendimento
+- Lançamentos de feature, campanhas, comunicados relevantes
+- Ações realizadas pelo time (correções, treinamentos, priorizações)
 
-Se o Slack MCP falhar: prosseguir sem contexto de eventos — omitir seção "Destaques" nos reports.
+**Montar a Tabela de Eventos e Incidentes (artefato interno, usado em todas as fases seguintes):**
+
+| Data | Squad/Canal de origem | Produto(s) relacionado(s) | Tipo | Descrição | Status |
+|---|---|---|---|---|---|
+| DD/MM | #canal | Vertical(is) | Instabilidade / Incidente / Feature / Comunicado | resumo curto | Ativo / Resolvido |
+
+Manter esta tabela completa (todas as squads) disponível durante toda a Fase 4 —
+**não filtrar por squad antes da análise**. A filtragem por relevância acontece depois,
+na hora de montar cada report específico (ver regra de correlação cruzada abaixo).
+
+**Regra de correlação cruzada (aplicar em todo report, Fase 4):**
+Ao analisar variação de volume, NPS, CSAT ou qualquer indicador de uma vertical, consultar
+a tabela **completa** de eventos — não apenas os eventos do canal/squad que está sendo
+reportado. Um evento de outra squad pode ser a explicação correta:
+- Uma instabilidade em um produto pode gerar aumento pontual de contatos ou queda de NPS
+  em outro produto que depende dele ou é frequentemente confundido pelo cliente (ex: Pix
+  via Cartão de Crédito pode ser afetado por instabilidade reportada no canal de Pix)
+- Uma nova feature ou correção pode reduzir contatos em uma vertical mesmo que o anúncio
+  tenha sido feito em outro canal (ex: melhoria de UX anunciada em Produto geral pode
+  reduzir contatos de dúvida em qualquer vertical específica)
+- Um incidente de infraestrutura (ex: instabilidade de app, PSP, gateway) mencionado em
+  qualquer canal pode explicar picos simultâneos em múltiplas verticais não relacionadas
+
+Ao citar uma correlação cruzada no report, deixar explícito que o evento veio de outro
+canal: *"Correlacionado a evento reportado em #canal-origem: [descrição]"* — nunca
+apresentar como se tivesse sido descoberto dentro do próprio canal do produto.
+
+**Não mencionar quem enviou a mensagem** — apenas data, canal de origem e conteúdo.
+
+Se o Slack MCP falhar: prosseguir sem a tabela de eventos — omitir seção "Destaques" e
+qualquer correlação cruzada em todos os reports desta execução.
 
 ---
 
@@ -173,6 +209,27 @@ Se o Slack MCP falhar: prosseguir sem contexto de eventos — omitir seção "De
 **Regra fundamental desta skill (aplicar sem exceção):** `agg_overview` é a única fonte
 para análises agregadas. Nunca reconstruir a lógica de memória — ler `metrics.yml` antes
 de montar qualquer query.
+
+### Passo 0 (obrigatório, antes de qualquer query de período) — checagem de dados parciais
+
+`agg_overview` frequentemente **não tem o dia mais recente consolidado** quando a Routine
+roda na segunda de manhã — confirmado empiricamente (26/07 só apareceu na base depois da
+execução da manhã). Esta checagem não é opcional e não fica a critério do agente — rodar
+sempre antes de tratar qualquer período como "semana fechada":
+
+```sql
+SELECT MAX(date) AS ultima_data_disponivel
+FROM prod.cx.agg_overview
+WHERE source = 'tickets'
+```
+
+Comparar `ultima_data_disponivel` com o último dia esperado do período (domingo da semana
+anterior). Se forem diferentes:
+- Tratar o período como **parcial** — nunca apresentar como semana fechada
+- Sinalizar explicitamente no report qual foi o último dia com dados ("dados até
+  [DD/MM] — [dia da semana] ainda não consolidado")
+- Ajustar qualquer comparação WoW para usar o mesmo número de dias em ambas as semanas
+  (ver exemplo de comparação seg-sex vs seg-sex em execuções anteriores desta Routine)
 
 ### Métricas a coletar por vertical e para o geral, com série de 5 semanas
 
@@ -267,6 +324,13 @@ histórica é sempre quantitativa e pertence à fonte oficial.
 ## FASE 4 — GERAÇÃO E ENVIO DOS REPORTS
 
 **Ferramenta:** Slack MCP
+
+**Antes de gerar cada report:** consultar a Tabela de Eventos e Incidentes completa
+(Fase 1) — não apenas os eventos do canal/produto sendo reportado. Para toda variação
+relevante de volume, NPS, CSAT ou retenção, checar se algum evento de **qualquer** squad
+explica o movimento, mesmo que o evento tenha sido reportado em outro canal. Citar a
+origem explicitamente quando a correlação vier de outro canal (ver regra completa na
+Fase 1).
 
 Processar os canais na ordem abaixo. Para cada canal:
 1. Gerar mensagem principal (post raiz)
@@ -519,20 +583,32 @@ ORDER BY date
 
 ### Central de Ajuda — evolução por produto
 
-Usar CX-009 (`Visitas Únicas Vertical`) de `cx-product-insights`, filtrado por vertical,
-com série das últimas 5 semanas — **incluir em todo report de produto**, não só no Geral.
-Para o Report Geral/Executivo, apresentar o agregado de todas as verticais.
+> ⚠️ **Correção Jul/2026:** `prod.cx.agg_overview` com `source = 'central'` é **mensal**,
+> ancorada no dia 1 do mês (mesmo padrão de AU/`claimer_count`) — **não é possível montar
+> série semanal ou diária com esta fonte**, ao contrário do que versões anteriores deste
+> arquivo pediam. Não tentar forçar uma série de 5 semanas — vai retornar dados vazios ou
+> repetidos na maioria das semanas.
+
+**Apresentar como comparação mensal:** mês corrente (parcial, até a data de execução) vs.
+mês anterior fechado. Usar CX-009 (`Visitas Únicas Vertical`) de `cx-product-insights`,
+filtrado por vertical — **incluir em todo report de produto**, não só no Geral. Para o
+Report Geral/Executivo, apresentar o agregado de todas as verticais.
 
 ```sql
 SELECT
-  date,
-  SUM(CASE WHEN metric = 'vertical' AND product = 'total' AND vertical = '{VERTICAL}'
+  DATE_TRUNC('month', date) AS mes,
+  vertical,
+  SUM(CASE WHEN metric = 'vertical' AND product = 'total'
       THEN visit_unic_count END) AS visitas_unicas
 FROM prod.cx.agg_overview
 WHERE source = 'central'
-GROUP BY date
-ORDER BY date
+  AND date >= DATE_TRUNC('month', DATE '{DATA_FIM}') - INTERVAL 1 MONTH
+GROUP BY DATE_TRUNC('month', date), vertical
+ORDER BY mes, vertical
 ```
+
+Ao apresentar, deixar explícito que o mês corrente é parcial (ex: "julho até dia 26") —
+nunca comparar um mês parcial com um mês fechado sem sinalizar essa diferença de janela.
 
 ### Template de apresentação (Slack)
 
@@ -545,8 +621,9 @@ ORDER BY date
 • *N2 Special Cases* (special cases + ouvidoria + redes sociais + stores + canais especiais): *[N]* ([X%] do total) ([+/-X%] WoW)
 Total: *[N]* atendimentos no período
 
-*Central de Ajuda — evolução*
-Visitas únicas à vertical, últimas 5 semanas: [série] ([+/-X%] última semana)
+*Central de Ajuda — evolução mensal*
+Visitas únicas à vertical: *[N]* no mês corrente (parcial, até dia [DD]) vs *[N]* no mês
+anterior fechado ([+/-X%])
 [Apenas Report Geral/Executivo] Top 3 produtos por volume de visitas: [produto 1] ([N]), [produto 2] ([N])
 
 *RecargaBot — detalhe*
@@ -675,7 +752,9 @@ Ao citar conteúdo de tickets: omitir CPF, telefone, e-mail e dados bancários.
 
 Antes de encerrar a Routine, verificar:
 - [ ] Fase 0 (orientações editoriais) lida ou registrada como ⚠️
-- [ ] Fase 1 (Slack contexto) executada ou registrada como ⚠️
+- [ ] Fase 1 (Tabela de Eventos e Incidentes — 10 canais, 14 dias) construída ou registrada como ⚠️
+- [ ] Correlação cruzada aplicada — eventos de outras squads checados em cada report, não só os do próprio canal
+- [ ] Fase 2 Passo 0 (checagem de MAX(date) / dados parciais) executada — período sinalizado como parcial se aplicável
 - [ ] Fase 2 (NPS/CSAT via Databricks) executada ou registrada como ⚠️
 - [ ] Fase 3 (Zendesk) executada para todas as verticais mapeadas
 - [ ] `#the-cxm-house` — raiz + 2 threads enviados
