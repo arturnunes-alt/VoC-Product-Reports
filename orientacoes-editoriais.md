@@ -875,3 +875,10 @@ Cobrança (ambas agregadas em "utilities"), Pix In/Out/Chaves e RAF Indicado/Ind
 `agg_overview` frequentemente não tem o último dia da semana anterior consolidado na
 segunda de manhã. Checar `MAX(date)` antes de tratar qualquer período como fechado —
 ver `SKILL.md` Fase 2 Passo 0.
+
+**Evolução pós-evento (eventos com data dentro do período reportado):**
+Não usar só "% vs semana anterior" quando o evento aconteceu no meio da própria semana
+sendo reportada — isso mistura dias de antes e depois e esconde a tendência real. Buscar
+série diária e mostrar a evolução dia a dia (crescendo/estabilizando/cedendo). Eventos de
+semanas anteriores continuam usando a comparação semanal padrão normalmente. Ver
+`SKILL.md` §"Evolução pós-evento" para o SQL e formato de apresentação.
