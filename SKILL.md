@@ -5,7 +5,7 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "1.7"
+version: "1.8"
 model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
@@ -135,32 +135,68 @@ Se o arquivo não existir: prosseguir com os templates padrão deste SKILL.md.
 
 ---
 
-## FASE 1 — LEITURA DE CONTEXTO (Slack)
+## FASE 1 — COLETA CONSOLIDADA DE EVENTOS E INCIDENTES (todos os canais, 14 dias)
 
-**Objetivo:** Identificar eventos, incidentes e comunicados recentes que possam
-explicar variações de volume ou CSAT nos reports.
+**Objetivo:** Construir uma tabela única de eventos/incidentes de **todos os squads**,
+antes de gerar qualquer report, para permitir correlação cruzada — um evento reportado
+no canal de uma squad pode explicar variação de volume ou indicador em outra vertical
+completamente diferente.
 
 **Ferramenta:** Slack MCP
 
-**Canais a ler (últimos 7 dias):**
--  — contexto executivo e decisões de gestão
--  — comunicados operacionais e de produto
-- Canal de cada squad correspondente ao report sendo gerado — temas ativos da squad
+**Canais a ler (últimos 14 dias, todos, sem exceção):**
+- `#the-cxm-house` — contexto geral do time CXM
+- `#lideres-cx-e-cxm` — contexto executivo e decisões de gestão
+- `#comunicados_e_atualizações_cx` — comunicados operacionais e de produto
+- `#account_cx`
+- `#cc-produto-e-cx`
+- `#cx_fraud`
+- `#investments-e-cx`
+- `#melhoria-continua-verticais`
+- `#pixcc-home-raf-cx`
+- `#squad_loan_seguimento`
+- `#subacquirer-cx`
 
-**O que extrair:**
-- Incidentes e instabilidades com data e produto afetado
-- Mudanças de produto, fluxo ou processo com impacto em atendimento
-- Ações realizadas pelo time (campanhas, treinamentos, correções)
-- Lançamentos, descontinuações ou alterações de regras
+Ler **todos** antes de montar qualquer report — não pular para os canais "próprios" de
+cada produto. O objetivo desta fase é ter o quadro completo antes de começar a análise.
 
-**Como usar:**
-- Armazenar internamente como lista de eventos com data, produto e descrição curta
-- Usar para identificar automaticamente os temas mais relevantes da semana por canal
-- Correlacionar variações de volume, NPS e CSAT com eventos identificados
-- Incorporar na seção "Destaques da semana" de cada report
-- Não mencionar quem enviou a mensagem — apenas data e conteúdo
+**O que extrair de cada canal:**
+- Incidentes e instabilidades — com data, produto(s) afetado(s) e status (ativo/resolvido)
+- Mudanças de produto, fluxo, regra ou processo com impacto potencial em atendimento
+- Lançamentos de feature, campanhas, comunicados relevantes
+- Ações realizadas pelo time (correções, treinamentos, priorizações)
 
-Se o Slack MCP falhar: prosseguir sem contexto de eventos — omitir seção "Destaques" nos reports.
+**Montar a Tabela de Eventos e Incidentes (artefato interno, usado em todas as fases seguintes):**
+
+| Data | Squad/Canal de origem | Produto(s) relacionado(s) | Tipo | Descrição | Status |
+|---|---|---|---|---|---|
+| DD/MM | #canal | Vertical(is) | Instabilidade / Incidente / Feature / Comunicado | resumo curto | Ativo / Resolvido |
+
+Manter esta tabela completa (todas as squads) disponível durante toda a Fase 4 —
+**não filtrar por squad antes da análise**. A filtragem por relevância acontece depois,
+na hora de montar cada report específico (ver regra de correlação cruzada abaixo).
+
+**Regra de correlação cruzada (aplicar em todo report, Fase 4):**
+Ao analisar variação de volume, NPS, CSAT ou qualquer indicador de uma vertical, consultar
+a tabela **completa** de eventos — não apenas os eventos do canal/squad que está sendo
+reportado. Um evento de outra squad pode ser a explicação correta:
+- Uma instabilidade em um produto pode gerar aumento pontual de contatos ou queda de NPS
+  em outro produto que depende dele ou é frequentemente confundido pelo cliente (ex: Pix
+  via Cartão de Crédito pode ser afetado por instabilidade reportada no canal de Pix)
+- Uma nova feature ou correção pode reduzir contatos em uma vertical mesmo que o anúncio
+  tenha sido feito em outro canal (ex: melhoria de UX anunciada em Produto geral pode
+  reduzir contatos de dúvida em qualquer vertical específica)
+- Um incidente de infraestrutura (ex: instabilidade de app, PSP, gateway) mencionado em
+  qualquer canal pode explicar picos simultâneos em múltiplas verticais não relacionadas
+
+Ao citar uma correlação cruzada no report, deixar explícito que o evento veio de outro
+canal: *"Correlacionado a evento reportado em #canal-origem: [descrição]"* — nunca
+apresentar como se tivesse sido descoberto dentro do próprio canal do produto.
+
+**Não mencionar quem enviou a mensagem** — apenas data, canal de origem e conteúdo.
+
+Se o Slack MCP falhar: prosseguir sem a tabela de eventos — omitir seção "Destaques" e
+qualquer correlação cruzada em todos os reports desta execução.
 
 ---
 
@@ -267,6 +303,13 @@ histórica é sempre quantitativa e pertence à fonte oficial.
 ## FASE 4 — GERAÇÃO E ENVIO DOS REPORTS
 
 **Ferramenta:** Slack MCP
+
+**Antes de gerar cada report:** consultar a Tabela de Eventos e Incidentes completa
+(Fase 1) — não apenas os eventos do canal/produto sendo reportado. Para toda variação
+relevante de volume, NPS, CSAT ou retenção, checar se algum evento de **qualquer** squad
+explica o movimento, mesmo que o evento tenha sido reportado em outro canal. Citar a
+origem explicitamente quando a correlação vier de outro canal (ver regra completa na
+Fase 1).
 
 Processar os canais na ordem abaixo. Para cada canal:
 1. Gerar mensagem principal (post raiz)
@@ -675,7 +718,8 @@ Ao citar conteúdo de tickets: omitir CPF, telefone, e-mail e dados bancários.
 
 Antes de encerrar a Routine, verificar:
 - [ ] Fase 0 (orientações editoriais) lida ou registrada como ⚠️
-- [ ] Fase 1 (Slack contexto) executada ou registrada como ⚠️
+- [ ] Fase 1 (Tabela de Eventos e Incidentes — 10 canais, 14 dias) construída ou registrada como ⚠️
+- [ ] Correlação cruzada aplicada — eventos de outras squads checados em cada report, não só os do próprio canal
 - [ ] Fase 2 (NPS/CSAT via Databricks) executada ou registrada como ⚠️
 - [ ] Fase 3 (Zendesk) executada para todas as verticais mapeadas
 - [ ] `#the-cxm-house` — raiz + 2 threads enviados
