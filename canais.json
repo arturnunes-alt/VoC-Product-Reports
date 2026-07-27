@@ -470,5 +470,37 @@
       "cx-realtime-insights",
       "cx-realtime-vertical-analysis"
     ]
+  },
+  "fase1_coleta_eventos": {
+    "descricao": "Coleta consolidada de eventos/incidentes de TODOS os canais antes de gerar qualquer report -- permite correlacao cruzada entre squads",
+    "janela_dias": 14,
+    "canais_leitura_obrigatoria": [
+      "#the-cxm-house",
+      "#lideres-cx-e-cxm",
+      "#comunicados_e_atualizações_cx",
+      "#account_cx",
+      "#cc-produto-e-cx",
+      "#cx_fraud",
+      "#investments-e-cx",
+      "#melhoria-continua-verticais",
+      "#pixcc-home-raf-cx",
+      "#squad_loan_seguimento",
+      "#subacquirer-cx"
+    ],
+    "schema_tabela_eventos": [
+      "data",
+      "squad_canal_origem",
+      "produtos_relacionados",
+      "tipo",
+      "descricao",
+      "status"
+    ],
+    "tipos_evento": [
+      "Instabilidade",
+      "Incidente",
+      "Feature",
+      "Comunicado"
+    ],
+    "regra_correlacao_cruzada": "Ao analisar variacao de qualquer indicador em qualquer vertical, checar a tabela COMPLETA de eventos (todas as squads), nao apenas os eventos do canal sendo reportado. Citar explicitamente a origem quando o evento correlacionado vier de outro canal."
   }
 }
