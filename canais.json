@@ -256,7 +256,10 @@
           ],
           "aberturas_especificas": [
             "perfil_new_newnew_repeat"
-          ]
+          ],
+          "agg_overview_vertical": "cashback e rendimento",
+          "agregada_em_agg_overview": true,
+          "nota_agregacao": "Misturada com cashback geral no agg_overview. Usar dim_zendesk_tickets_summary (vertical='rendimento cdi') para isolar volume/motivos."
         },
         {
           "nome_report": "Report de VoC - Movimentacoes Financeiras",
@@ -305,7 +308,10 @@
           ],
           "aberturas_especificas": [
             "perfil_new_newnew_repeat"
-          ]
+          ],
+          "agg_overview_vertical": "utilities",
+          "agregada_em_agg_overview": true,
+          "nota_agregacao": "Junto com Boleto de Cobranca no agg_overview (grupo utilities). Usar dim_zendesk_tickets_summary (vertical='contas e boletos') para isolar."
         },
         {
           "nome_report": "Report de VoC - Boleto de Cobranca",
@@ -318,7 +324,10 @@
           "aberturas_especificas": [
             "perfil_new_newnew_repeat"
           ],
-          "nota": "Tag confirmada via custom-field-values.md (cx-orchestrator-reference) — gap anterior estava incorreto, a vertical existe."
+          "nota": "Tag confirmada via custom-field-values.md (cx-orchestrator-reference) — gap anterior estava incorreto, a vertical existe.",
+          "agg_overview_vertical": "utilities",
+          "agregada_em_agg_overview": true,
+          "nota_agregacao": "Junto com Contas e Boletos no agg_overview (grupo utilities). Usar dim_zendesk_tickets_summary (vertical='boleto de cobranca') para isolar."
         },
         {
           "nome_report": "Report de VoC - Recarga de Celular",
@@ -330,7 +339,10 @@
           ],
           "aberturas_especificas": [
             "perfil_new_newnew_repeat"
-          ]
+          ],
+          "agg_overview_vertical": "topup",
+          "agregada_em_agg_overview": false,
+          "nota_agregacao": "Mapeia limpo para topup no agg_overview -- nao estava documentado antes."
         }
       ]
     },
@@ -360,7 +372,10 @@
             "pix_in_out_chaves",
             "pix_wallet_vs_cartao",
             "perfil_new_newnew_repeat"
-          ]
+          ],
+          "agg_overview_vertical": "pix",
+          "agregada_em_agg_overview": true,
+          "nota_agregacao": "agg_overview nao separa In/Out/Chaves. Usar dim_zendesk_tickets_summary com vertical LIKE 'pix::%' para o subtipo."
         },
         {
           "nome_report": "Report de VoC - Pix CC",
@@ -385,7 +400,10 @@
           ],
           "aberturas_especificas": [
             "perfil_new_newnew_repeat"
-          ]
+          ],
+          "agg_overview_vertical": "raf",
+          "agregada_em_agg_overview": true,
+          "nota_agregacao": "agg_overview nao separa Indicado/Indicador. Usar dim_zendesk_tickets_summary com vertical LIKE 'raf::%' para o subtipo."
         }
       ]
     },
