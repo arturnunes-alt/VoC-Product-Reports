@@ -5,7 +5,7 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "1.9"
+version: "2.0"
 model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
@@ -192,6 +192,48 @@ reportado. Um evento de outra squad pode ser a explicação correta:
 Ao citar uma correlação cruzada no report, deixar explícito que o evento veio de outro
 canal: *"Correlacionado a evento reportado em #canal-origem: [descrição]"* — nunca
 apresentar como se tivesse sido descoberto dentro do próprio canal do produto.
+
+**Evolução pós-evento (obrigatória para eventos com data dentro do período reportado):**
+
+Quando um evento da Tabela de Eventos tiver **data dentro da semana sendo reportada**
+(diferente de eventos históricos de semanas anteriores, que só entram como contexto),
+não basta citar a variação da semana inteira — isso mistura dias de antes e depois do
+evento e mascara a trajetória real. Buscar a série **diária** (volume via `agg_overview`
+`source='tickets'`, e CSAT/NPS via `source='experiencia'` quando o volume de resposta
+permitir) cobrindo alguns dias antes do evento como base e todos os dias depois até o
+fim do período disponível, e apresentar a evolução dia a dia — não só um único
+"antes vs depois" agregado.
+
+```sql
+-- Evolução diária de volume ao redor de um evento (ajustar DATA_EVENTO e VERTICAL)
+SELECT
+  date,
+  SUM(ticket_count) AS volume
+FROM prod.cx.agg_overview
+WHERE source = 'tickets'
+  AND vertical = '{VERTICAL}'
+  AND date BETWEEN DATE('{DATA_EVENTO}') - INTERVAL 3 DAY AND '{DATA_FIM}'
+GROUP BY date
+ORDER BY date
+```
+
+**Como apresentar:** série curta de valores diários (baseline pré-evento + cada dia
+pós-evento disponível), com uma leitura explícita da tendência — crescendo, estabilizando
+ou já cedendo. Não usar apenas "% vs semana anterior" para eventos com data dentro do
+próprio período — isso não é obrigatório para eventos anteriores ao período (esses
+continuam usando a comparação semanal padrão).
+
+Exemplo de formato:
+```
+*[Produto] — [evento] em [DD/MM]:*
+Antes ([DD–DD/MM]): ~[N]/dia
+Depois: [DD/MM]: [N] · [DD/MM]: [N] · [DD/MM]: [N]
+Tendência: [crescendo / estabilizando / cedendo] — [1 linha de leitura]
+```
+
+Se o evento ocorreu no(s) último(s) dia(s) do período (poucos dias de "depois"
+disponíveis), sinalizar isso explicitamente — a leitura de tendência com 1–2 pontos é
+preliminar, não conclusiva.
 
 **Não mencionar quem enviou a mensagem** — apenas data, canal de origem e conteúdo.
 
@@ -754,6 +796,7 @@ Antes de encerrar a Routine, verificar:
 - [ ] Fase 0 (orientações editoriais) lida ou registrada como ⚠️
 - [ ] Fase 1 (Tabela de Eventos e Incidentes — 10 canais, 14 dias) construída ou registrada como ⚠️
 - [ ] Correlação cruzada aplicada — eventos de outras squads checados em cada report, não só os do próprio canal
+- [ ] Evolução pós-evento aplicada — para todo evento com data dentro do período, série diária apresentada em vez de só variação semanal agregada
 - [ ] Fase 2 Passo 0 (checagem de MAX(date) / dados parciais) executada — período sinalizado como parcial se aplicável
 - [ ] Fase 2 (NPS/CSAT via Databricks) executada ou registrada como ⚠️
 - [ ] Fase 3 (Zendesk) executada para todas as verticais mapeadas
