@@ -5,7 +5,7 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "2.0"
+version: "2.1"
 model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
@@ -161,7 +161,9 @@ Ler **todos** antes de montar qualquer report — não pular para os canais "pr�
 cada produto. O objetivo desta fase é ter o quadro completo antes de começar a análise.
 
 **O que extrair de cada canal:**
-- Incidentes e instabilidades — com data, produto(s) afetado(s) e status (ativo/resolvido)
+- Incidentes e instabilidades — com data, produto(s) afetado(s), status (ativo/resolvido)
+  e **horário/data de resolução quando mencionado** (ex: "normalizado às 17h de 01/07") —
+  esse dado alimenta diretamente a janela de "Evolução pós-evento" da Fase 4
 - Mudanças de produto, fluxo, regra ou processo com impacto potencial em atendimento
 - Lançamentos de feature, campanhas, comunicados relevantes
 - Ações realizadas pelo time (correções, treinamentos, priorizações)
@@ -200,28 +202,40 @@ Quando um evento da Tabela de Eventos tiver **data dentro da semana sendo report
 não basta citar a variação da semana inteira — isso mistura dias de antes e depois do
 evento e mascara a trajetória real. Buscar a série **diária** (volume via `agg_overview`
 `source='tickets'`, e CSAT/NPS via `source='experiencia'` quando o volume de resposta
-permitir) cobrindo alguns dias antes do evento como base e todos os dias depois até o
-fim do período disponível, e apresentar a evolução dia a dia — não só um único
-"antes vs depois" agregado.
+permitir) e apresentar a evolução dia a dia — não só um único "antes vs depois" agregado.
+
+**⚠️ Instabilidades são tipicamente pontuais — limitar a janela de análise ao período
+real de ocorrência, não estender até o fim do período disponível por padrão:**
+- Se o `Status` na Tabela de Eventos for **Resolvido** e houver data/hora de resolução
+  conhecida (mesmo que aproximada, ex: "normalizado às 17h"): a janela "depois" vai do
+  início da instabilidade até a resolução, mais 1 dia de confirmação de que voltou ao
+  normal. Não continuar reportando "evolução" para os dias seguintes já sem instabilidade
+  — nesse ponto os números são operação normal, não mais efeito do evento.
+- Se o `Status` for **Ativo** (sem resolução confirmada): estender a janela até o último
+  dia com dados disponíveis, já que a instabilidade ainda está em curso.
+- Para os demais tipos de evento (**Feature**, **Comunicado**) o efeito costuma ser mais
+  duradouro por natureza (mudança permanente de fluxo/regra) — nesses casos manter a
+  janela até o fim do período disponível, sem essa limitação.
 
 ```sql
--- Evolução diária de volume ao redor de um evento (ajustar DATA_EVENTO e VERTICAL)
+-- Evolução diária de volume ao redor de um evento (ajustar DATA_EVENTO, DATA_FIM_JANELA e VERTICAL)
+-- DATA_FIM_JANELA = data de resolução + 1 dia (instabilidade resolvida) OU {DATA_FIM} do período (ativa ou feature/comunicado)
 SELECT
   date,
   SUM(ticket_count) AS volume
 FROM prod.cx.agg_overview
 WHERE source = 'tickets'
   AND vertical = '{VERTICAL}'
-  AND date BETWEEN DATE('{DATA_EVENTO}') - INTERVAL 3 DAY AND '{DATA_FIM}'
+  AND date BETWEEN DATE('{DATA_EVENTO}') - INTERVAL 3 DAY AND '{DATA_FIM_JANELA}'
 GROUP BY date
 ORDER BY date
 ```
 
-**Como apresentar:** série curta de valores diários (baseline pré-evento + cada dia
-pós-evento disponível), com uma leitura explícita da tendência — crescendo, estabilizando
-ou já cedendo. Não usar apenas "% vs semana anterior" para eventos com data dentro do
-próprio período — isso não é obrigatório para eventos anteriores ao período (esses
-continuam usando a comparação semanal padrão).
+**Como apresentar:** série curta de valores diários (baseline pré-evento + dias dentro da
+janela real de ocorrência), com uma leitura explícita da tendência — crescendo,
+estabilizando ou já cedendo. Não usar apenas "% vs semana anterior" para eventos com data
+dentro do próprio período — isso não é obrigatório para eventos anteriores ao período
+(esses continuam usando a comparação semanal padrão).
 
 Exemplo de formato:
 ```
