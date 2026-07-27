@@ -146,15 +146,23 @@ Texto integral da transcrição do atendimento (quando disponível).
 
 ---
 
-### 5. `prod.rwd.cc_recargapay_card_account` — Tipo de cartão
+### 5. `prod.credit_card.dim_card_account` — Tipo de cartão (governado)
 
-| Campo | Descrição |
+> ⚠️ **Correção Jul/2026:** `prod.rwd.cc_recargapay_card_account` está **bloqueada pela
+> governança do Databricks** — não usar. `prod.credit_card.dim_card_account` é o
+> equivalente governado confirmado empiricamente por múltiplos agentes em execução real.
+> Nomes de coluna abaixo são os mais prováveis por analogia com a tabela antiga — **confirmar
+> via `databricks_preview_query` antes da primeira query de produção**, já que a estrutura
+> exata não foi documentada formalmente, apenas validada como funcional.
+
+| Campo (a confirmar) | Descrição provável |
 |---|---|
-| `user_id` | ID do usuário |
-| `provider_program_id` | ID do programa (ver mapeamento abaixo) |
-| `created_date` | Data de criação |
+| `user_id` ou `account_id` | ID do usuário/conta |
+| `program_id` ou `provider_program_id` | ID do programa (ver mapeamento abaixo) |
+| `created_date` ou equivalente | Data de criação/vigência |
 
-**Mapeamento `provider_program_id` → tipo de cartão:**
+**Mapeamento `provider_program_id` → tipo de cartão** (regra de negócio, não muda
+independente do nome exato da coluna na tabela governada):
 
 | ID | Tipo | Categoria |
 |---|---|---|
@@ -180,7 +188,7 @@ CASE
 END AS card_type
 ```
 
-**Deduplicação (usar sempre):**
+**Deduplicação (usar sempre, ajustar nome de coluna após confirmação):**
 ```sql
 ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_date DESC) AS rn_card
 -- Filtrar: WHERE rn_card = 1
@@ -223,12 +231,18 @@ GROUP BY user_id, DATE(DATE_TRUNC('week', fat_date))
 
 ---
 
-### 8. `prod.rwd.clo_users` — Segmento do usuário
+### 8. Segmento PF/PJ — fontes governadas (correção Jul/2026)
 
-| Campo | Descrição |
-|---|---|
-| `userid` | ID do usuário |
-| `segment` | Segmento (ex: pf, pj ouro, pj prata, pj bronze) |
+> ⚠️ `prod.rwd.clo_users` está **bloqueada pela governança do Databricks** — não usar.
+
+**Fonte primária:** campo `user_profile` já existente em `prod.cx.dim_zendesk_tickets_summary`
+(pf, pj ouro, pj prata, pj bronze) — não precisa de join adicional, já vem no ticket.
+
+**Fonte alternativa para Empréstimo especificamente:** `prod.lending.fat_loan_properties_user`
+ou `prod.lending.fat_loans_consignado` — usar quando precisar de segmento com mais detalhe
+de crédito do que `user_profile` oferece (ex: cruzar com dados de contrato de empréstimo).
+Confirmar colunas exatas via `databricks_preview_query` antes de usar em produção — não
+documentadas formalmente aqui ainda.
 
 ---
 
@@ -432,7 +446,7 @@ Exemplo para semana 26 (23–29/06/2026 BRT):
 | Qualitativo em escala (>50 tickets) | Databricks `fat_tickets_transcription_summary` | — |
 | Qualitativo pontual (3–5 tickets) | Zendesk MCP `get_ticket` | — |
 | Motivo de contato / Causa raiz precisa | Zendesk MCP (campos 23294051472659 / 23570792097683) | Databricks `reason_contact` / `root_cause` |
-| Perfil do usuário (segmento, OS, first vertical) | Databricks `fat_user_data` + `clo_users` | — |
+| Perfil do usuário (segmento, OS, first vertical) | Databricks `fat_user_data` + `user_profile` (dim_zendesk_tickets_summary) | — |
 | Tipo de cartão CC | Databricks `cc_recargapay_card_account` | — |
 | TPV / comportamento transacional | Databricks `fat_tpv` | — |
 
@@ -594,16 +608,17 @@ ORDER BY data;
 
 ---
 
-### 11. `prod.rwd.clo_orders` — Pedidos e uso de produto
+### 11. `prod.core.fat_order` — Pedidos e uso de produto (governado)
 
-| Campo | Descrição |
-|---|---|
-| `userid` | ID do usuário |
-| `vertical` | Produto utilizado |
-| `order_date` | Data do pedido/uso |
-| `status` | Status do pedido |
+> ⚠️ **Correção Jul/2026:** `prod.rwd.clo_orders` está **bloqueada pela governança do
+> Databricks** — não usar. `prod.core.fat_order` é o equivalente governado confirmado
+> empiricamente. Confirmar nomes exatos de coluna via `databricks_preview_query` antes de
+> usar em produção — assumidos abaixo por analogia com a tabela antiga (`userid`,
+> `vertical`, `order_date`).
 
-**Uso principal:** Classificar clientes em New, NewNew e Repeat por produto.
+**Uso principal:** Classificar clientes em New e Repeat por produto (ver exceção de
+NewNew para certas verticais na seção de Perfil de Clientes deste documento e em
+`orientacoes-editoriais.md`).
 
 ```sql
 -- Classificacao New / NewNew / Repeat por produto e periodo
@@ -615,7 +630,7 @@ WITH user_profile AS (
         MAX(CASE WHEN o.vertical = '{VERTICAL}' THEN 1 ELSE 0 END) AS usou_produto
     FROM `prod`.`cx`.`dim_zendesk_tickets_summary` t
     LEFT JOIN `prod`.`growth`.`fat_user_data` u ON CAST(t.userid AS STRING) = CAST(u.userid AS STRING)
-    LEFT JOIN `prod`.`rwd`.`clo_orders` o ON CAST(t.userid AS STRING) = CAST(o.userid AS STRING)
+    LEFT JOIN `prod`.`core`.`fat_order` o ON CAST(t.userid AS STRING) = CAST(o.userid AS STRING)
         AND o.vertical = '{VERTICAL}'
         AND DATE(o.order_date) < DATE(t.created_at_br)
     WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
@@ -631,6 +646,12 @@ SELECT
 FROM user_profile
 GROUP BY perfil_cliente;
 ```
+
+**⚠️ Exceção — verticais sem "uso de produto" natural:** Minha Conta, Conta Desativada,
+Carteira Desativada e Chargeback Recovery não têm um evento de "usar o produto" análogo
+a uma transação — nessas verticais, **NewNew não é um conceito válido**. Usar apenas
+New vs Repeat (classificar por `dias_de_conta <= 30`, sem a coluna `usou_produto`). Ver
+detalhamento em `orientacoes-editoriais.md`.
 
 ---
 
