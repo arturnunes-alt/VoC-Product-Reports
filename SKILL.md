@@ -5,7 +5,7 @@ description: >
   do Slack. Executa semanalmente sem intervenção humana — coleta dados do Zendesk via
   [TEST] MCP Gateway AWS AgentCore, lê contexto de eventos nos canais Slack e envia
   reports formatados como mensagem raiz + threads por canal.
-version: "1.8"
+version: "1.9"
 model: "claude-sonnet-5"
 trigger: "Toda segunda-feira às 08:00 BRT (11:00 UTC)"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
@@ -209,6 +209,27 @@ qualquer correlação cruzada em todos os reports desta execução.
 **Regra fundamental desta skill (aplicar sem exceção):** `agg_overview` é a única fonte
 para análises agregadas. Nunca reconstruir a lógica de memória — ler `metrics.yml` antes
 de montar qualquer query.
+
+### Passo 0 (obrigatório, antes de qualquer query de período) — checagem de dados parciais
+
+`agg_overview` frequentemente **não tem o dia mais recente consolidado** quando a Routine
+roda na segunda de manhã — confirmado empiricamente (26/07 só apareceu na base depois da
+execução da manhã). Esta checagem não é opcional e não fica a critério do agente — rodar
+sempre antes de tratar qualquer período como "semana fechada":
+
+```sql
+SELECT MAX(date) AS ultima_data_disponivel
+FROM prod.cx.agg_overview
+WHERE source = 'tickets'
+```
+
+Comparar `ultima_data_disponivel` com o último dia esperado do período (domingo da semana
+anterior). Se forem diferentes:
+- Tratar o período como **parcial** — nunca apresentar como semana fechada
+- Sinalizar explicitamente no report qual foi o último dia com dados ("dados até
+  [DD/MM] — [dia da semana] ainda não consolidado")
+- Ajustar qualquer comparação WoW para usar o mesmo número de dias em ambas as semanas
+  (ver exemplo de comparação seg-sex vs seg-sex em execuções anteriores desta Routine)
 
 ### Métricas a coletar por vertical e para o geral, com série de 5 semanas
 
@@ -562,20 +583,32 @@ ORDER BY date
 
 ### Central de Ajuda — evolução por produto
 
-Usar CX-009 (`Visitas Únicas Vertical`) de `cx-product-insights`, filtrado por vertical,
-com série das últimas 5 semanas — **incluir em todo report de produto**, não só no Geral.
-Para o Report Geral/Executivo, apresentar o agregado de todas as verticais.
+> ⚠️ **Correção Jul/2026:** `prod.cx.agg_overview` com `source = 'central'` é **mensal**,
+> ancorada no dia 1 do mês (mesmo padrão de AU/`claimer_count`) — **não é possível montar
+> série semanal ou diária com esta fonte**, ao contrário do que versões anteriores deste
+> arquivo pediam. Não tentar forçar uma série de 5 semanas — vai retornar dados vazios ou
+> repetidos na maioria das semanas.
+
+**Apresentar como comparação mensal:** mês corrente (parcial, até a data de execução) vs.
+mês anterior fechado. Usar CX-009 (`Visitas Únicas Vertical`) de `cx-product-insights`,
+filtrado por vertical — **incluir em todo report de produto**, não só no Geral. Para o
+Report Geral/Executivo, apresentar o agregado de todas as verticais.
 
 ```sql
 SELECT
-  date,
-  SUM(CASE WHEN metric = 'vertical' AND product = 'total' AND vertical = '{VERTICAL}'
+  DATE_TRUNC('month', date) AS mes,
+  vertical,
+  SUM(CASE WHEN metric = 'vertical' AND product = 'total'
       THEN visit_unic_count END) AS visitas_unicas
 FROM prod.cx.agg_overview
 WHERE source = 'central'
-GROUP BY date
-ORDER BY date
+  AND date >= DATE_TRUNC('month', DATE '{DATA_FIM}') - INTERVAL 1 MONTH
+GROUP BY DATE_TRUNC('month', date), vertical
+ORDER BY mes, vertical
 ```
+
+Ao apresentar, deixar explícito que o mês corrente é parcial (ex: "julho até dia 26") —
+nunca comparar um mês parcial com um mês fechado sem sinalizar essa diferença de janela.
 
 ### Template de apresentação (Slack)
 
@@ -588,8 +621,9 @@ ORDER BY date
 • *N2 Special Cases* (special cases + ouvidoria + redes sociais + stores + canais especiais): *[N]* ([X%] do total) ([+/-X%] WoW)
 Total: *[N]* atendimentos no período
 
-*Central de Ajuda — evolução*
-Visitas únicas à vertical, últimas 5 semanas: [série] ([+/-X%] última semana)
+*Central de Ajuda — evolução mensal*
+Visitas únicas à vertical: *[N]* no mês corrente (parcial, até dia [DD]) vs *[N]* no mês
+anterior fechado ([+/-X%])
 [Apenas Report Geral/Executivo] Top 3 produtos por volume de visitas: [produto 1] ([N]), [produto 2] ([N])
 
 *RecargaBot — detalhe*
@@ -720,6 +754,7 @@ Antes de encerrar a Routine, verificar:
 - [ ] Fase 0 (orientações editoriais) lida ou registrada como ⚠️
 - [ ] Fase 1 (Tabela de Eventos e Incidentes — 10 canais, 14 dias) construída ou registrada como ⚠️
 - [ ] Correlação cruzada aplicada — eventos de outras squads checados em cada report, não só os do próprio canal
+- [ ] Fase 2 Passo 0 (checagem de MAX(date) / dados parciais) executada — período sinalizado como parcial se aplicável
 - [ ] Fase 2 (NPS/CSAT via Databricks) executada ou registrada como ⚠️
 - [ ] Fase 3 (Zendesk) executada para todas as verticais mapeadas
 - [ ] `#the-cxm-house` — raiz + 2 threads enviados
