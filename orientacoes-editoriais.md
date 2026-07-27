@@ -322,10 +322,14 @@ contexto_pontual: ""
 Identificar automaticamente os temas ativos lendo o canal `#account_cx` dos últimos 7 dias.
 Priorizar na análise os motivos com maior variação WoW e os temas com mais discussão no canal.
 
-**Aberturas obrigatórias por perfil:**
+**⚠️ Correção Jul/2026 — Minha Conta está na exceção de NewNew:** não há um evento de
+"uso do produto" análogo a uma transação para esta vertical. Usar **apenas New vs Repeat**:
 - **New** (conta criada há ≤30 dias): via `fat_user_data.reg_date`
-- **NewNew** (conta >30 dias, nunca usou o produto): via `clo_orders` sem pedidos em Minha Conta
-- **Repeat** (já utilizou o produto anteriormente)
+- **Repeat** (conta >30 dias)
+
+Ver `skill-databricks-mcp.md` §11 para o ajuste de query correspondente. `prod.rwd.clo_orders`
+está bloqueada pela governança — usar `prod.core.fat_order` quando NewNew for aplicável
+em outras verticais.
 
 **Estrutura do report (Thread 1):**
 
@@ -354,8 +358,8 @@ Top causas raiz (análise qualitativa via Zendesk MCP):
 *PERFIL DOS CLIENTES*
 
 • *New* (≤30 dias): [N] tickets ([X%]) — motivo principal: [motivo]
-• *NewNew* (>30d sem uso): [N] tickets ([X%]) — motivo principal: [motivo]
 • *Repeat*: [N] tickets ([X%]) — motivo principal: [motivo]
+_(NewNew não se aplica a esta vertical)_
 PF: [X%] · PJ: [X%]
 
 ─────────────────────────────
@@ -474,7 +478,23 @@ contexto_pontual: ""
 ### Instruções de análise
 
 Ler `#cx_fraud` dos últimos 7 dias para identificar temas ativos.
-Para Conta Desativada e Carteira Desativada, separar por tipo de bloqueio (AUTO vs MANUAL).
+
+**⚠️ Correção Jul/2026:** Para Conta Desativada e Carteira Desativada, a abertura real
+tem **3 categorias**, não um binário AUTO vs MANUAL como pedido em versões anteriores —
+confirmado empiricamente em execução real. As categorias reais são:
+- **Regra automática** (bloqueio disparado por regra de sistema, sem intervenção humana)
+- **Revisão manual COPS** (bloqueio avaliado e decidido por analista de COPS)
+- **Ofício judicial** (bloqueio determinado por ordem judicial — categoria própria, não
+  cabe em nenhuma das outras duas)
+
+Não forçar essas 3 categorias de volta em um binário — a base não sustenta essa
+simplificação.
+
+**⚠️ Exceção de perfil — NewNew não se aplica a estas 3 verticais:** Conta Desativada,
+Carteira Desativada e Chargeback Recovery não têm um evento de "uso do produto" análogo a
+uma transação (diferente de CDB, Pix, Empréstimo etc.). Usar **apenas New vs Repeat**
+nesses 3 produtos — omitir a coluna NewNew do template de Perfil. Ver `skill-databricks-mcp.md`
+§11 para o ajuste de query correspondente.
 
 **Estrutura padrão por produto:**
 
@@ -491,13 +511,15 @@ CSAT: *[X pts]* | Resolutividade: *[X%]*
 
 [Para Conta/Carteira Desativada]
 *Abertura por tipo de bloqueio:*
-• *AUTO:* [N] tickets ([X%]) | CSAT: [X] | Motivo: [motivo]
-• *MANUAL:* [N] tickets ([X%]) | CSAT: [X] | Motivo: [motivo]
+• *Regra automática:* [N] tickets ([X%]) | CSAT: [X] | Motivo: [motivo]
+• *Revisão manual COPS:* [N] tickets ([X%]) | CSAT: [X] | Motivo: [motivo]
+• *Ofício judicial:* [N] tickets ([X%]) | CSAT: [X] | Motivo: [motivo]
 
 Top motivos e causas raiz:
 • [top 3 com volume, variação WoW e análise qualitativa]
 
-*PERFIL:* New [X%] · NewNew [X%] · Repeat [X%] | PF [X%] · PJ [X%]
+*PERFIL:* New [X%] · Repeat [X%] | PF [X%] · PJ [X%]
+_(NewNew não se aplica a esta vertical — ver nota acima)_
 
 *NPS TRANSACIONAL* 📊
 [Formato padrão com série de 5 semanas]
@@ -827,3 +849,29 @@ contexto_pontual: ""
 - NPS Transacional abaixo de 55 pts em qualquer produto
 - Retenção de Bot abaixo de 45%
 - Canal regulatório (Ouvidoria, Consumidor.gov, BACEN) acima da média histórica
+
+### Exceções conhecidas (confirmadas empiricamente, Jul/2026)
+
+**Perfil New/NewNew/Repeat — NewNew não se aplica a 4 verticais:**
+Minha Conta, Conta Desativada, Carteira Desativada e Chargeback Recovery não têm um
+evento de "uso do produto" análogo a uma transação. Usar apenas New vs Repeat nessas 4
+verticais — nas demais, manter os 3 grupos normalmente.
+
+**Central de Ajuda é mensal, não semanal:**
+`agg_overview` com `source='central'` é ancorada no dia 1 do mês — nunca pedir série
+semanal para essa métrica. Usar comparação de mês corrente (parcial) vs mês anterior
+fechado. Ver `SKILL.md` §"Central de Ajuda — evolução por produto".
+
+**Conta/Carteira Desativada — 3 categorias reais de bloqueio, não binário:**
+Regra automática, Revisão manual COPS e Ofício judicial — nunca simplificar para
+AUTO vs MANUAL.
+
+**Verticais agregadas em `agg_overview` — usar `dim_zendesk_tickets_summary` para o corte fino:**
+Rendimento CDI (agregada em "cashback e rendimento"), Contas e Boletos e Boleto de
+Cobrança (ambas agregadas em "utilities"), Pix In/Out/Chaves e RAF Indicado/Indicador
+(sem subtipo em `agg_overview.vertical`). Ver tabela completa em `skill-zendesk-cx.md` §8.
+
+**Dados parciais no início da semana:**
+`agg_overview` frequentemente não tem o último dia da semana anterior consolidado na
+segunda de manhã. Checar `MAX(date)` antes de tratar qualquer período como fechado —
+ver `SKILL.md` Fase 2 Passo 0.
