@@ -397,7 +397,10 @@ campos de texto livre dos tickets. Omitir CPF, telefone, e-mail e dados bancári
 
 ```sql
 -- Count rápido no Databricks (evitar SELECT * em tabelas grandes)
-SELECT COUNT(*) AS total
+-- ⛔ NUNCA usar COUNT(*) aqui — agg_overview é pré-agregada (cada linha já soma vários
+-- tickets em ticket_count); COUNT(*) conta linhas/combinações de dimensão, não tickets,
+-- e sub-representa o volume real. Usar sempre SUM(ticket_count).
+SELECT SUM(ticket_count) AS total
 FROM prod.cx.agg_overview
 WHERE source = 'tickets'
   AND (flg_human = true OR flg_retention_bot = true)
