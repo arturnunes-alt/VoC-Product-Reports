@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "2.2"
+version: "2.3"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -473,8 +473,8 @@ comentários do time podem trazer eventos/contexto que os canais sozinhos não t
 
 | MODO | Destino | Cabeçalho da mensagem raiz |
 |---|---|---|
-| RASCUNHO | `#the-voice-cx` (ID: `C060F2QUJCD`), todos os 20 sets | `📊 *[RASCUNHO → #canal-real] {título normal do report}*` |
-| VALIDACAO | Canal real de cada report (ver `canais.json`) | `📊 *{título normal do report}*` — sem marcador, é a versão final |
+| RASCUNHO | `#the-voice-cx` (ID: `C060F2QUJCD`), todos os 20 sets | `<!here> 📊 *[RASCUNHO → #canal-real] {título normal do report}*` |
+| VALIDACAO | Canal real de cada report (ver `canais.json`) | `<!here> 📊 *{título normal do report}*` — sem marcador `[RASCUNHO →]`, é a versão final |
 
 **Em `MODO=RASCUNHO`, adicionar ao final da mensagem raiz de cada set:**
 ```
@@ -493,11 +493,20 @@ Processar os canais na ordem abaixo. Para cada canal:
 
 ### ORDEM DE ENVIO
 
+**Menção `<!here>` na mensagem raiz — obrigatória, com propósito diferente por MODO:**
+
+| MODO | Onde | Por quê |
+|---|---|---|
+| RASCUNHO | Início da mensagem raiz, antes do `📊` | Chamar atenção do time para a janela de comentários até 12h em `#the-voice-cx` |
+| VALIDACAO | Início da mensagem raiz, antes do `📊` | Avisar a squad que o report final chegou no canal real |
+
+Sintaxe exata do Slack: `<!here>` (não `@here` em texto puro — isso não dispara notificação).
+
 #### 1. `#the-cxm-house` — Report Geral
 
 **Mensagem raiz:**
 ```
-📊 *Report VoC — {PERÍODO}*
+<!here> 📊 *Report VoC — {PERÍODO}*
 
 {RESUMO_3_5_LINHAS}: volume total, top vertical, top motivo, CSAT médio e principal alerta.
 Tom direto, sem seções, feito para leitura rápida.
@@ -516,7 +525,7 @@ Seguir o TEMPLATE DE ALERTAS (seção abaixo).
 
 #### 2. `#lideres-cx-e-cxm` — Report Executivo
 
-**Mensagem raiz:** Igual ao `#the-cxm-house`.
+**Mensagem raiz:** Igual ao `#the-cxm-house` (incluindo `<!here>`).
 
 **Thread Reply 1 — Report executivo condensado:**
 Versão resumida do TEMPLATE DE REPORT COMPLETO.
@@ -538,7 +547,7 @@ Para cada canal de produto (na ordem: `#account_cx`, `#cc-produto-e-cx`,
 
 **Mensagem raiz:**
 ```
-📊 *Report de VoC - {NOME_PRODUTO} — {PERÍODO}*
+<!here> 📊 *Report de VoC - {NOME_PRODUTO} — {PERÍODO}*
 
 {RESUMO_3_5_LINHAS}: volume, variação, top motivo, CSAT e principal insight.
 
@@ -913,7 +922,8 @@ Antes de encerrar a Routine, verificar:
   threads lidas por completo, comentários classificados e reconciliados
 - [ ] Destino de envio correto para o MODO ativo:
   - RASCUNHO → todos os 20 sets em `#the-voice-cx` com marcador `[RASCUNHO → #canal]`
-  - VALIDACAO → cada set no canal real correspondente, sem marcador
+  - VALIDACAO → cada set no canal real correspondente, sem marcador `[RASCUNHO →]`
+- [ ] `<!here>` presente no início de toda mensagem raiz enviada (ambos os MODOs)
 - [ ] `#the-cxm-house` — raiz + 2 threads enviados
 - [ ] `#lideres-cx-e-cxm` — raiz + 2 threads enviados
 - [ ] `#account_cx` — raiz + 2 threads enviados
