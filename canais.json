@@ -520,5 +520,26 @@
       "Comunicado"
     ],
     "regra_correlacao_cruzada": "Ao analisar variacao de qualquer indicador em qualquer vertical, checar a tabela COMPLETA de eventos (todas as squads), nao apenas os eventos do canal sendo reportado. Citar explicitamente a origem quando o evento correlacionado vier de outro canal."
+  },
+  "pipeline_duas_etapas": {
+    "descricao": "Routine A (Rascunho) e Routine B (Validacao e Publicacao) encadeadas com janela de comentarios humanos",
+    "routine_a_rascunho": {
+      "horario": "08:00 BRT",
+      "destino": "#the-voice-cx (todos os 20 sets)",
+      "marcador_cabecalho": "[RASCUNHO -> #canal-real]",
+      "janela_comentarios": "ate 12:00 BRT"
+    },
+    "routine_b_validacao": {
+      "horario": "12:15 BRT",
+      "acao": "rele rascunho + comentarios em #the-voice-cx, revalida dados do zero, reconcilia, publica versao final",
+      "destino": "canal real de cada squad (sem marcador)",
+      "classificacao_comentarios": [
+        "correcao_factual",
+        "contexto_adicional",
+        "discordancia_interpretacao",
+        "pergunta_em_aberto"
+      ]
+    },
+    "the_voice_cx_channel_id": "C060F2QUJCD"
   }
 }
