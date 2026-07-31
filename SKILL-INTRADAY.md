@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "1.3"
+version: "1.4"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -215,7 +215,7 @@ sentidos importam, não só picos.
 | Queda no volume de contatos humanos (por vertical) vs. baseline mesmo recorte | **< 30%** do baseline (ou seja, queda de mais de 70%), E o baseline tinha volume mínimo de 15 contatos no mesmo recorte — evita disparar em vertical que já é naturalmente baixa nesse horário |
 | Queda no volume de acessos à Central de Ajuda (por vertical) vs. baseline mesmo recorte | **< 30%** do baseline, com o baseline tendo volume mínimo de 30 acessos |
 | Silêncio total onde historicamente há volume | **Zero** contatos ou acessos numa vertical/canal cujo baseline no mesmo recorte é **≥ 10** — sinal mais grave de queda, tratar com prioridade máxima |
-| Queda de retenção de bot (vertical específica) | **< 15%** de retenção na janela, com volume mínimo de 10 sessões de bot |
+| Queda de retenção de bot (vertical específica) — usar retenção **excluindo inatividade** (ver `skill-bot-retention-scenarios.md`) | **< 15%** de retenção engajada na janela, com volume mínimo de 10 sessões de bot |
 | NPS Transacional (por produto, via planilha IndeCX) | **≤ 0 pts** na janela, com volume mínimo de 10 respostas — queda abrupta abaixo de zero é sinal forte, mais rígido que o threshold semanal (55 pts) por ser uma amostra pequena e intraday |
 | CSAT Atendimento N1 (geral, via planilha IndeCX) | **< 50%** de satisfeitos na janela, com volume mínimo de 10 respostas |
 
