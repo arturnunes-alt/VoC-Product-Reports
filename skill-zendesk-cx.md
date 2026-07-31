@@ -242,7 +242,13 @@ Aplicar em toda query via AgentCore (`zendesk___zendesk`):
 
 **Regras de sintaxe importantes:**
 - `contact-chat-online` e `contact-online-chat` são **aliases** — usar em OR, nunca somar queries separadas
-- `retenção_chatbot` e `retencao_chatbot` são **aliases** — uma query é suficiente
+- ⚠️ **Correção Jul/2026:** `retenção_chatbot` e `retencao_chatbot` **NÃO são aliases** — verificado
+  empiricamente. `retencao_chatbot` (sem acento) é a tag ampla e correta para "atendimentos retidos
+  pelo bot" (10.968 tickets/semana). `retenção_chatbot` (com acento) é um **subconjunto** dela
+  (~16% do volume, 1.765/semana) com propósito ainda não totalmente esclarecido — ambas as
+  populações têm a mesma taxa de contaminação por inatividade (~84%), então a diferença não é
+  "retenção real vs inatividade". Usar sempre `retencao_chatbot` (sem acento) como tag principal
+  para volume de retenção — ver `skill-bot-retention-scenarios.md` para o mapeamento completo.
 - Tags AND: usar `tags:"tag1 tag2"` (aspas) — `tags:tag1 tags:tag2` separados = OR
 - ⛔ Nunca usar `(tags:A OR tags:B) -tags:C` — retorna zero na Search API
 
