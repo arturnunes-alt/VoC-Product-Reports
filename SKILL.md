@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "2.3"
+version: "2.4"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -720,6 +720,12 @@ Os estágios com **menor** `pct_retencao` (e volume relevante) são os "Top tema
 não-retenção" do template. Quando um estágio tiver baixa retenção, usar `overflow` vs
 `passive_abandonment`/`active_abandonment` do mesmo período para explicar **por quê** —
 transbordo intencional é diferente de abandono do cliente, e isso muda a ação recomendada.
+
+**Ver `skill-bot-retention-scenarios.md` para enriquecimento qualitativo:** mapeamento de
+cenários reais de retenção via Zendesk live (`knowledge-base-reason`), achado de
+contaminação por inatividade (~84% dos tickets `retencao_chatbot` são abandono, não
+resolução genuína) e metodologia de transbordo por vertical. Usar como complemento
+qualitativo aos números de `agg_botmaker_metrics`, não como substituto.
 
 ### Query de referência — volume da Distribuição
 
