@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "1.0"
+version: "1.1"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -35,14 +35,15 @@ das execuções, o resultado esperado é **nenhum alerta**. Isso é sucesso, nã
 rotina. Alertar demais destrói a confiança no sinal tão rápido quanto não alertar quando
 deveria.
 
-Dois portões, ambos obrigatórios, antes de qualquer alerta ser enviado:
+Dois portões, ambos obrigatórios, antes de qualquer alerta ser enviado — nesta ordem,
+por eficiência de custo (ver nota na Fase 2):
 
-1. **Portão de criticidade:** o desvio precisa passar o threshold definido na seção
-   "Critérios de Alta Criticidade" abaixo. Desvios moderados não geram alerta nesta
+1. **Portão de criticidade (Fase 2):** o desvio precisa passar o threshold definido na
+   seção "Critérios de Alta Criticidade". Desvios moderados não geram alerta nesta
    rotina — esses continuam cobertos pelo report semanal.
-2. **Portão de novidade:** o tema não pode já estar sinalizado em nenhum dos canais
-   estratégicos (ver Fase 2). Se já está mapeado, a rotina **não** alerta — o objetivo é
-   pegar o que ainda ninguém percebeu, não duplicar aviso de algo que a squad já sabe.
+2. **Portão de novidade (Fase 3):** o tema não pode já estar sinalizado em nenhum dos
+   canais estratégicos. Se já está mapeado, a rotina **não** alerta — o objetivo é pegar
+   o que ainda ninguém percebeu, não duplicar aviso de algo que a squad já sabe.
 
 ---
 
@@ -124,19 +125,66 @@ esta fonte para detectar a anomalia em si — ela não tem os dados de hoje.
 
 ---
 
-## FASE 2 — VERIFICAÇÃO DE MAPEAMENTO PRÉVIO (Slack)
+## FASE 2 — CRITÉRIOS DE ALTA CRITICIDADE (barato — roda antes da busca no Slack)
 
-Antes de considerar qualquer anomalia como candidata a alerta, verificar se ela **já**
-está sinalizada em algum canal estratégico, na janela desta execução (Fase 0):
+> ⚠️ **Ordem otimizada para custo (Jul/2026):** esta fase roda **antes** da verificação
+> de mapeamento prévio (antiga Fase 2, agora Fase 3), porque usa só os dados já
+> coletados na Fase 1 — nenhuma chamada de ferramenta nova. A busca cara no Slack (4
+> canais) só deve rodar depois, e só para a lista curta de verticais que passarem aqui.
+> Isso evita gastar ~72 buscas de Slack em 18 verticais quando normalmente só 0–3 delas
+> vão ter desvio relevante.
 
-**Canais estratégicos a checar (todos, sempre):**
-- `#escalation_incidents` (ID: `CCP2AGBV1`) — canal de escalação de incidentes de toda a
-  empresa (infra, PIX, Cartão, Loans, Investimentos, Antifraude) — prioridade alta de
-  checagem, incidentes graves de plataforma aparecem aqui primeiro
+Um item só vira **candidato a alerta** se passar **pelo menos um** destes critérios
+(ajustar após as primeiras semanas de operação, conforme calibração com o time):
+
+| Critério | Threshold inicial proposto |
+|---|---|
+| Volume de contatos humanos (por vertical) na janela vs. baseline mesmo recorte de horário | **> 80%** acima do baseline, E volume absoluto mínimo de 15 contatos na janela (evita alarme por vertical de baixíssimo volume) |
+| Volume de acessos à Central de Ajuda (por vertical) vs. baseline mesmo recorte | **> 100%** acima do baseline, com volume mínimo de 30 acessos |
+| Queda de retenção de bot (vertical específica) | **< 15%** de retenção na janela, com volume mínimo de 10 sessões de bot |
+| Concentração em canal regulatório (Ouvidoria, Reclame Aqui, Consumidor.gov, BACEN) | Qualquer volume acima de **3 ocorrências** na janela para uma única vertical — canais regulatórios têm tolerância baixa por natureza |
+
+**⚠️ Estes thresholds são um ponto de partida, não um valor definitivo.** Vão precisar
+de calibração nas primeiras semanas — thresholds muito baixos geram ruído (mina a
+confiança na rotina), muito altos deixam passar coisa real. Registrar internamente cada
+execução com "quase alertas" (perto do threshold, mas não passou) por 2–3 semanas, para
+o dono do processo revisar e ajustar os números acima no repositório.
+
+### 2.1 — Gatilho preventivo (`#escalation_incidents`) — checagem única, não por vertical
+
+Fazer **uma única busca** (não 18) em `#escalation_incidents` (ID: `CCP2AGBV1`) cobrindo
+a janela desta execução (Fase 0), procurando manutenções/incidentes reportados. Para
+cada resultado, comparar o campo "Domain/Service Affected" contra a lista de verticais
+monitoradas (`canais.json`). Qualquer vertical que bater vira **candidato preventivo** —
+mesmo que ainda não tenha anomalia de volume visível (o objetivo declarado desta rotina
+é agir de forma preditiva, não só reativa).
+
+Essa é a única exceção em que uma vertical vira candidata **sem** passar por um
+threshold numérico da tabela acima — o gatilho aqui é a menção de incidente em si.
+
+**Resultado desta fase:** uma lista curta de verticais candidatas (tipicamente 0 a 3),
+combinando as que passaram algum threshold numérico e/ou bateram no gatilho preventivo.
+Se a lista estiver vazia, encerrar a execução aqui — não é necessário rodar a Fase 3.
+
+---
+
+## FASE 3 — VERIFICAÇÃO DE MAPEAMENTO PRÉVIO (Slack — só para os candidatos da Fase 2)
+
+Rodar **apenas** para as verticais que sobraram na lista de candidatos da Fase 2 —
+nunca para as 18 de uma vez. Antes de considerar qualquer candidato como alerta final,
+verificar se ele **já** está sinalizado em algum canal estratégico, na janela desta
+execução (Fase 0):
+
+**Canais estratégicos a checar, por candidato:**
 - `#comunicados_e_atualizações_cx` (ID: `C012NMP0UBE`)
 - `#lideres-cx-e-cxm` (ID: `C052R2X2DEE`)
-- Canal da squad correspondente à vertical da anomalia (ver `canais.json` para o
+- Canal da squad correspondente à vertical do candidato (ver `canais.json` para o
   mapeamento vertical → canal — **ler o arquivo, não presumir o ID**)
+
+`#escalation_incidents` **não precisa ser buscado de novo aqui** — já foi coberto na
+Fase 2.1 para toda a janela. Se o candidato veio do gatilho preventivo, ele já está,
+por definição, mapeado nesse canal (mas ainda pode não estar em nenhum dos outros 3,
+o que ainda justifica o alerta se for o caso).
 
 **Como buscar:** `slack_search_public_and_private` com `in:#canal after:{JANELA_INICIO}`,
 usando termos relacionados à vertical/tema da anomalia (nome do produto, palavras-chave
@@ -145,38 +193,8 @@ do tipo de problema — instabilidade, erro, indisponível, bug).
 **Se encontrar menção que já cobre o tema:** não alertar. A anomalia já está mapeada —
 o objetivo desta rotina é exatamente evitar duplicar isso.
 
-**Se não encontrar nada:** este é um tema não mapeado — segue para a Fase 3 (critérios
-de criticidade) antes de virar alerta.
-
----
-
-## FASE 3 — CRITÉRIOS DE ALTA CRITICIDADE
-
-Um item só vira alerta se passar **pelo menos um** destes critérios (ajustar após as
-primeiras semanas de operação, conforme calibração com o time):
-
-| Critério | Threshold inicial proposto |
-|---|---|
-| Volume de contatos humanos (por vertical) na janela vs. baseline mesmo recorte de horário | **> 80%** acima do baseline, E volume absoluto mínimo de 15 contatos na janela (evita alarme por vertical de baixíssimo volume) |
-| Volume de acessos à Central de Ajuda (por vertical) vs. baseline mesmo recorte | **> 100%** acima do baseline, com volume mínimo de 30 acessos |
-| Queda de retenção de bot (vertical específica) | **< 15%** de retenção na janela, com volume mínimo de 10 sessões de bot |
-| Concentração em canal regulatório (Ouvidoria, Reclame Aqui, Consumidor.gov, BACEN) | Qualquer volume acima de **3 ocorrências** na janela para uma única vertical — canais regulatórios têm tolerância baixa por natureza |
-| Menção a instabilidade/indisponibilidade em `#escalation_incidents` com domínio batendo com vertical monitorada, **sem** anomalia de volume ainda visível | Alertar preventivamente — ver Fase 3.1 |
-
-**⚠️ Estes thresholds são um ponto de partida, não um valor definitivo.** Vão precisar
-de calibração nas primeiras semanas — thresholds muito baixos geram ruído (mina a
-confiança na rotina), muito altos deixam passar coisa real. Registrar internamente cada
-execução com "quase alertas" (perto do threshold, mas não passou) por 2–3 semanas, para
-o dono do processo revisar e ajustar os números acima no repositório.
-
-### 3.1 — Alerta preventivo por incidente de infraestrutura
-
-Se `#escalation_incidents` tiver uma manutenção ou incidente reportado na janela cujo
-"Domain/Service Affected" bata com alguma vertical monitorada (ex: PIX, Credit Card,
-Loans, Investments, Anti-fraud), mas o volume de contatos **ainda não** tenha reagido:
-tratar como sinal preditivo de alta criticidade mesmo sem anomalia de volume ainda
-visível — o objetivo declarado desta rotina é agir de forma preditiva, não só reativa.
-Sinalizar isso de forma distinta no alerta (ver template, categoria "Preventivo").
+**Se não encontrar nada:** este é um tema não mapeado — segue para a Fase 4 (envio do
+alerta).
 
 ---
 
@@ -260,8 +278,9 @@ dados bancários ao citar qualquer trecho.
 - [ ] Janela de análise calculada corretamente (Fase 0), considerando falha de execução anterior se aplicável
 - [ ] Dados de hoje vieram de fonte ao vivo (Zendesk MCP + Amplitude), nunca do Databricks
 - [ ] Baseline comparado no mesmo recorte de horário, nunca dia completo vs. parcial
-- [ ] Verificação de mapeamento prévio feita nos 4 canais estratégicos + canal da squad, antes de qualquer alerta
+- [ ] Critério de alta criticidade checado primeiro (Fase 2), gerando lista curta de candidatos — sem busca no Slack ainda
+- [ ] `#escalation_incidents` verificado uma única vez (Fase 2.1), não por vertical
+- [ ] Verificação de mapeamento prévio (Fase 3) feita só para os candidatos, nos 2 canais gerais + canal da squad — nunca para as 18 verticais de uma vez
 - [ ] Nenhum alerta disparado para tema já mapeado em outro canal
-- [ ] Todo alerta passou por pelo menos um critério de alta criticidade (Fase 3)
 - [ ] Nenhuma mensagem enviada ao canal da squad — só `#the-voice-cx`
 - [ ] Responsável marcado com `@` conforme `mapeamento-responsaveis.json`, ou alerta enviado sem menção quando On Demand/não mapeado (nunca `<!here>` como substituto)
