@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "1.4"
+version: "1.5"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -101,17 +101,81 @@ tags:{TAG_VERTICAL}
 
 ### 1B — Acessos à Central de Ajuda (Amplitude, ao vivo)
 
-**Ferramenta:** Amplitude (via `tool_search` — carregar `query_dataset` e
-`get_custom_or_labeled_events` antes de consultar).
+**Ferramenta:** Amplitude — `Amplitude:query_dataset` (não `use_amplitude_metrics`, que
+é só administração de definição de métrica/goal, não consulta de valor).
 
-Amplitude tem granularidade de evento com timestamp completo — usar para contar acessos
-a artigos/categorias por vertical na janela coberta por esta execução, e para o baseline
-do mesmo recorte de horário nos últimos 4 dias úteis comparáveis, pela mesma lógica do
-item 1A. Consultar `get_amplitude_context` ou os metadados do projeto antes da primeira
-execução para confirmar o nome exato dos eventos de "acesso a artigo" — não presumir o
-nome do evento sem confirmar.
+**Project ID confirmado:** `332381` (app principal RecargaPay).
 
-Se o Amplitude MCP falhar ou o evento não puder ser confirmado: registrar ⚠️ e prosseguir
+⚠️ **Correção Jul/2026 — validado empiricamente ao vivo:** uma execução anterior desta
+Routine concluiu que Amplitude não expunha ferramentas de consulta de dado (só
+`use_amplitude_metrics`) nesta sessão. Isso **não é uma limitação estrutural do
+conector** — é específico daquele ambiente de execução. Testado diretamente:
+`query_dataset` e `search` funcionam e retornam dado real e atual (mesmo padrão do
+achado anterior com Google Sheets: uma ferramenta parecer indisponível não significa
+que o conector inteiro está limitado — testar outra ferramenta do mesmo conector antes
+de desistir).
+
+**Taxonomia de evento — fragmentada por artigo, não um evento genérico único:**
+
+Não existe um evento único "acesso a artigo" com uma propriedade de artigo/path — cada
+artigo da Central de Ajuda tem seu **próprio nome de evento**, no padrão:
+```
+ViewedHelp / {Seção} - {Título do Artigo} - /help/articles/{slug}#article-container
+```
+Exemplo real testado: `ViewedHelp / Cartão RecargaPay - Como funciona a anuidade do
+cartão? - /help/articles/Como-funciona-a-anuidade-do-cartão#article-container` — retornou
+dado real (1–3 acessos únicos/dia na semana testada, com dado até o próprio dia da
+consulta).
+
+**⚠️ Cuidado com eventos "genéricos" de nome parecido — podem estar obsoletos:**
+`Viewed /central-de-ajuda` (o nome mais óbvio para "acesso à Central de Ajuda") retornou
+**zero em todos os dias** dos últimos 30 dias testados — está obsoleto, não é mais
+disparado. Uma variante mais recente, `Viewed /recarga:///central-de-ajuda`, está viva
+mas com volume muito pequeno (1–8/dia) — provavelmente um ponto de entrada específico
+(deep link), não o fluxo principal. **Não usar nenhum desses dois como proxy do volume
+total de acessos** — confirmar sempre via `lastModified` do evento (usar `search`) antes
+de confiar em um nome genérico.
+
+**Metodologia recomendada — duas etapas:**
+
+1. **Catálogo de artigos:** obter via Zendesk Guide (`list_help_center_articles`) — 836
+   artigos com título, seção e URL confirmados como disponíveis nesta ferramenta.
+2. **Consulta de acesso por artigo:** para cada artigo de interesse, montar o nome do
+   evento correspondente (padrão acima) e consultar via `query_dataset`:
+```json
+{
+  "app": "332381",
+  "type": "eventsSegmentation",
+  "name": "Acessos artigo - {nome}",
+  "params": {
+    "range": "Last 7 Days",
+    "events": [{"event_type": "ViewedHelp / {Seção} - {Título} - /help/articles/{slug}#article-container", "filters": [], "group_by": []}],
+    "metric": "uniques",
+    "countGroup": "User",
+    "groupBy": [],
+    "interval": 1,
+    "segments": [{"conditions": []}]
+  }
+}
+```
+
+**⚠️ Custo — não consultar os 836 artigos a cada execução.** Manter uma lista curta
+("watchlist") dos artigos de maior volume/relevância por vertical (recalibrar
+mensalmente, não a cada execução) — consultar só esses na rotina intraday. Para
+descoberta ampla de novos artigos relevantes, isso é trabalho do pipeline semanal ou de
+investigação pontual, não desta rotina de alta frequência.
+
+**Dashboard oficial já existente:** `Central de Ajuda - Priorities` (ID `r6xbrrzp`,
+dono Juan Amezaga) tem 7 charts — pelo menos um é do tipo funil/conversão (artigo →
+próxima ação), não "top artigos por view" simples. Vale consultar antes de recriar
+análises do zero — mas não usar `chartId` para herdar parâmetros de um chart de tipo
+diferente do que se está construindo (retorna erro de tipo incompatível).
+
+**Baseline (mesmo recorte de horário):** mesma lógica do item 1A — consultar os últimos
+4 dias úteis comparáveis no mesmo intervalo de horário via o mesmo evento.
+
+Se o Amplitude falhar de verdade (não apenas uma tool específica — testar `search` como
+diagnóstico) ou o evento do artigo não puder ser confirmado: registrar ⚠️ e prosseguir
 apenas com os dados de contatos (1A) — não bloquear a execução inteira por isso.
 
 ### 1C — NPS e CSAT (planilha IndeCX sincronizada — Google Sheets)
@@ -361,7 +425,7 @@ dados bancários ao citar qualquer trecho.
 ## CHECKLIST DE CONCLUSÃO
 
 - [ ] Janela de análise calculada corretamente (Fase 0), considerando falha de execução anterior se aplicável
-- [ ] Dados de hoje vieram de fonte ao vivo (Zendesk MCP + Amplitude + planilha IndeCX), nunca do Databricks
+- [ ] Dados de hoje vieram de fonte ao vivo (Zendesk MCP + Amplitude via query_dataset + planilha IndeCX), nunca do Databricks — se Amplitude parecer indisponível, testar `search` antes de desistir (pode ser limitação pontual de sessão, não do conector)
 - [ ] Baseline comparado no mesmo recorte de horário, nunca dia completo vs. parcial
 - [ ] Critérios de alta criticidade checados nos dois sentidos — aumentos E quedas inesperadas, não só picos (Fase 2)
 - [ ] Critério de alta criticidade checado primeiro (Fase 2), gerando lista curta de candidatos — sem busca no Slack ainda
