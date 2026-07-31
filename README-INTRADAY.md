@@ -42,13 +42,21 @@ report semanal (Routine A/B, documentado no `README.md` principal). Por isso:
 |---|---|---|
 | `[TEST] MCP Gateway AWS AgentCore` | Contatos humanos/bot **ao vivo** (hoje) | ✅ Sim |
 | `Amplitude` | Acessos à Central de Ajuda **ao vivo** (hoje) | ✅ Sim |
+| `Google Drive` | Leitura da planilha IndeCX sincronizada (NPS/CSAT) — via `read_file_content`, não `google_drive_fetch` | ✅ Sim |
 | `Slack` | Checagem de mapeamento prévio + envio de alerta | ✅ Sim |
 | `MCP Data - RecargaPay` | Apenas contexto histórico amplo — não usado para detectar anomalia | ⚠️ Recomendado |
 
 **Diferença crítica do pipeline semanal:** o Databricks (`MCP Data - RecargaPay`) tem
-defasagem de 1 dia — por isso esta Routine usa Zendesk MCP e Amplitude **ao vivo** como
-fonte primária dos dados de hoje, e reserva o Databricks só para contexto histórico mais
-amplo (ver `SKILL-INTRADAY.md` Fase 1C).
+defasagem de 1 dia — por isso esta Routine usa Zendesk MCP, Amplitude e a planilha IndeCX
+sincronizada **ao vivo** como fonte primária dos dados de hoje, e reserva o Databricks só
+para contexto histórico mais amplo (ver `SKILL-INTRADAY.md` Fase 1D).
+
+**Sobre a planilha IndeCX (NPS/CSAT):** não é uma chamada direta à API IndeCX — essa
+chamada é feita por um processo externo, fora do ambiente da Routine, e os resultados
+já chegam sincronizados numa Google Sheet (`169QibFtIf_5md5f4Wn33btHdeWlGItznBPq8WLFaz40`).
+A Routine lê o arquivo inteiro a cada execução via `Google Drive:read_file_content` —
+decisão consciente de aceitar esse custo em troca de simplicidade, em vez de manter uma
+versão reduzida da planilha.
 
 ### Mapeamento de responsáveis — já preenchido (31/07/2026)
 
@@ -74,20 +82,28 @@ automática (Google Sheets não é legível pelas ferramentas desta Routine, só
 ## Setup — passo a passo
 
 ### 1. Conectar o Amplitude (adicional em relação ao pipeline semanal)
-Em `claude.ai` → Settings → Connectors → adicionar Amplitude, se ainda não estiver
-conectado. Os outros 3 MCPs (AgentCore, Slack, MCP Data RP) já devem estar conectados
-pelo setup do pipeline semanal.
+Em `claude.ai` → Settings → Connectors → adicionar Amplitude e Google Drive, se ainda
+não estiverem conectados. Os outros 3 MCPs (AgentCore, Slack, MCP Data RP) já devem
+estar conectados pelo setup do pipeline semanal.
 
-### 2. Criar a Routine — 3 triggers, mesma lógica
+### 2. Criar a Routine — uma Routine, três triggers de Schedule
 
-Em `claude.ai/code/routines` → New Routine:
+Em `claude.ai/code/routines` → New Routine (criar com o primeiro horário) → depois
+voltar na tela de edição da mesma Routine para adicionar os outros dois triggers.
 
 - **Name:** `VoC Monitoramento Intraday`
 - **Repository:** `VoC-Product-Reports` (mesmo repositório)
-- **Trigger:** Schedule → Daily (dias úteis) → três horários: 13:00 UTC (10h BRT),
-  16:00 UTC (13h BRT), 19:00 UTC (16h BRT). Se a plataforma só permitir um horário por
-  Routine, criar 3 Routines idênticas, uma por horário.
-- **Connectors:** AgentCore + Amplitude + Slack + MCP Data RP
+- **Connectors:** AgentCore + Amplitude + Google Drive + Slack + MCP Data RP
+- **Triggers (adicionar os 3 na seção "Select a trigger" da tela de edição — não é
+  necessário criar 3 Routines separadas, uma única Routine aceita múltiplos triggers de
+  Schedule):**
+  - Schedule 1 → cron `0 13 * * 1-5` (10h BRT, seg–sex)
+  - Schedule 2 → cron `0 16 * * 1-5` (13h BRT, seg–sex)
+  - Schedule 3 → cron `0 19 * * 1-5` (16h BRT, seg–sex)
+
+Alternativa equivalente: um único trigger de Schedule com cron `0 13,16,19 * * 1-5`,
+combinando os 3 horários numa única expressão. Prefira 3 triggers separados se quiser
+poder pausar um horário específico sem afetar os outros dois.
 
 **Prompt da Routine:**
 ```
@@ -95,9 +111,9 @@ Você é um analista de CXM da RecargaPay executando a Routine de Monitoramento 
 com Claude Sonnet 5. Esta Routine é independente do pipeline semanal de reports.
 
 VALIDAÇÃO INICIAL (antes de qualquer coisa)
-Confirme que as tools do Zendesk (AgentCore), Amplitude e Slack estão de fato registradas
-nesta sessão. Se qualquer uma não retornar tools utilizáveis, encerre sem alertar — esta
-Routine depende de dados ao vivo, não há fallback seguro via Databricks.
+Confirme que as tools do Zendesk (AgentCore), Amplitude, Google Drive e Slack estão de
+fato registradas nesta sessão. Se qualquer uma não retornar tools utilizáveis, encerre
+sem alertar — esta Routine depende de dados ao vivo, não há fallback seguro via Databricks.
 
 Execute conforme as instruções de SKILL-INTRADAY.md deste repositório.
 
@@ -108,8 +124,11 @@ ARQUIVOS DE REFERÊNCIA
   nunca editar
 
 REGRA FUNDAMENTAL
-Dados de HOJE vêm sempre de Zendesk MCP (ao vivo) e Amplitude — nunca do Databricks, que
-tem defasagem de 1 dia. O Databricks só é usado para contexto histórico mais amplo.
+Dados de HOJE vêm sempre de Zendesk MCP (ao vivo), Amplitude e da planilha IndeCX
+sincronizada (Google Sheet ID 169QibFtIf_5md5f4Wn33btHdeWlGItznBPq8WLFaz40, via
+Google Drive:read_file_content) — nunca do Databricks, que tem defasagem de 1 dia. O
+Databricks só é usado para contexto histórico mais amplo. Não tentar chamar a API IndeCX
+diretamente — essa chamada é bloqueada no ambiente de execução das Routines.
 
 DESTINO
 O único canal de saída é #the-voice-cx (ID C060F2QUJCD). Nunca postar no canal de
