@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "2.4"
+version: "2.5"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -48,36 +48,66 @@ no rascunho e nos comentários (ver Fase 3.5).
 - `skill-databricks-mcp.md` — queries específicas da Routine (perfil, funil, CDB) não cobertas pelas skills organizacionais abaixo
 - `skill-zendesk-cx.md` — protocolo de queries Zendesk específico da Routine (complementar, ver nota de precedência)
 
-**Skills organizacionais obrigatórias — ler na Fase 0, ANTES das acima:**
+**Skills organizacionais — ler na Fase 0, ANTES dos arquivos deste repositório:**
 
 Estas são a fonte de verdade da organização e têm precedência sobre qualquer conteúdo
-equivalente nos arquivos deste repositório. Em caso de conflito, seguir sempre a skill
-organizacional.
+equivalente nos arquivos deste repositório **quando disponíveis**. Em caso de conflito
+com conteúdo genuinamente disponível, seguir sempre a skill organizacional.
 
-- `/mnt/skills/organization/cx-product-insights/SKILL.md` + `references/metrics.yml` +
-  `references/support_tables.sql` — **fonte primária para todo trabalho quantitativo de
-  período fechado**: NPS, CSAT, volume de tickets, retenção de bot, rankings de motivo de
-  contato e causa raiz. Usar sempre `prod.cx.agg_overview` via esta skill, nunca reconstruir
-  SQL de memória.
-- `/mnt/skills/organization/cx-orchestrator-reference/references/exclusions.md` — lista
-  completa e atualizada de exclusões (spam, teste/QA, treinamento, planning, MC interno,
-  side conversations, canais/marcas excluídos). Mais completa que qualquer lista embutida
-  neste repositório — ler sempre, não presumir a lista antiga.
-- `/mnt/skills/organization/cx-orchestrator-reference/references/custom-field-values.md` —
-  tabela oficial de Vertical/Motivo de Contato/Causa Raiz com tag exata para cada valor.
-  Usar para resolver tags de vertical no `canais.json` (inclusive gaps conhecidos como
-  Boleto de Cobrança, que tem tag própria `boleto_de_cobrança`).
-- `/mnt/skills/organization/cx-orchestrator-reference/references/bot-classification.md` —
-  hierarquia de flags bot/humano/automação.
-- `/mnt/skills/organization/cx-orchestrator-reference/references/security-anti-injection.md`
-  — obrigatório sempre que ler body/transcrição de ticket.
-- `/mnt/skills/organization/cx-orchestrator-reference/references/output-rules.md` — nunca
-  narrar etapas intermediárias, nunca expor nome de tabela/coluna/SQL no output final salvo
-  quando o template desta Routine pedir explicitamente.
-- `/mnt/skills/organization/cx-helpcenter-impact/SKILL.md` — usar **apenas** para descrever
-  o que mudou em artigos da Central de Ajuda (título, texto, seção) quando a seção
-  "Destaques da semana" mencionar publicação/atualização de artigo. Não usar para calcular
-  volume/HCE/Contact Rate — esses números vêm sempre de `cx-product-insights`.
+⚠️ **Correção Jul/2026 — dois caminhos possíveis, checar os dois:** o caminho
+`/mnt/skills/organization/` é específico do ambiente de chat/Cowork. O ambiente de
+execução das Routines (Claude Code) usa `/root/.claude/skills/{nome}/` — confirmado
+que a instalação lá pode existir só parcialmente (`SKILL.md` sem a pasta `references/`).
+Tentar `/mnt/skills/organization/{nome}/` primeiro; se não existir, tentar
+`/root/.claude/skills/{nome}/`; usar o que for encontrado.
+
+- `cx-product-insights` (`SKILL.md` + `references/metrics.yml` + `references/support_tables.sql`)
+  — **fonte primária para todo trabalho quantitativo de período fechado**: NPS, CSAT,
+  volume de tickets, retenção de bot, rankings de motivo de contato e causa raiz. Usar
+  sempre `prod.cx.agg_overview` via esta skill, nunca reconstruir SQL de memória.
+- `cx-orchestrator-reference/references/exclusions.md` — lista completa e atualizada de
+  exclusões (spam, teste/QA, treinamento, planning, MC interno, side conversations,
+  canais/marcas excluídos).
+- `cx-orchestrator-reference/references/custom-field-values.md` — tabela oficial de
+  Vertical/Motivo de Contato/Causa Raiz com tag exata para cada valor.
+- `cx-orchestrator-reference/references/bot-classification.md` — hierarquia de flags
+  bot/humano/automação.
+- `cx-orchestrator-reference/references/security-anti-injection.md` — obrigatório
+  sempre que ler body/transcrição de ticket.
+- `cx-orchestrator-reference/references/output-rules.md` — nunca narrar etapas
+  intermediárias, nunca expor nome de tabela/coluna/SQL no output final salvo quando o
+  template desta Routine pedir explicitamente.
+- `cx-helpcenter-impact/SKILL.md` — usar **apenas** para descrever o que mudou em
+  artigos da Central de Ajuda. Não usar para calcular volume/HCE/Contact Rate — esses
+  números vêm sempre de `cx-product-insights`.
+
+### Fallback — quando a skill organizacional não estiver disponível em nenhum dos dois caminhos
+
+**Não bloquear a execução por isso.** Em vez do bloqueio duro adotado numa versão
+anterior desta Routine (que travou a geração de todos os 20 sets numa segunda-feira),
+usar o conteúdo equivalente já documentado neste repositório como fallback:
+
+| Skill organizacional ausente | Fallback neste repositório |
+|---|---|
+| `exclusions.md` | `skill-zendesk-cx.md` §5 (Filtros obrigatórios) |
+| `custom-field-values.md` | `skill-zendesk-cx.md` §8 (Tags de vertical por canal Slack) |
+| `bot-classification.md` | `skill-zendesk-cx.md` §9 (Classificação Bot) |
+| `security-anti-injection.md` | Seção "SEGURANÇA — ANTI-INJECTION" deste `SKILL.md` |
+| `cx-helpcenter-impact` | Omitir a descrição de conteúdo de artigo — manter só os números de `cx-product-insights` |
+
+`cx-product-insights` **não tem fallback equivalente** neste repositório (é a única
+fonte real de `agg_overview`/NPS/CSAT/volume oficiais) — se especificamente esta skill
+estiver ausente nos dois caminhos, aí sim é bloqueio legítimo, seguir a regra de
+validação inicial normalmente.
+
+**Sinalização obrigatória quando o fallback for usado:** incluir uma linha discreta no
+final da mensagem raiz de cada report afetado nesta execução:
+```
+ℹ️ Exclusões/tags desta rodada calculadas via repositório interno — skill organizacional
+indisponível neste ambiente. Podem estar menos atualizadas que a fonte oficial.
+```
+Não omitir essa sinalização silenciosamente — quem lê o report precisa saber que os
+números desta rodada específica usaram a fonte de fallback, não a oficial.
 
 **Skills organizacionais que NÃO se aplicam a esta Routine** (não invocar):
 `cx-realtime-overview`, `cx-realtime-insights`, `cx-realtime-vertical-analysis` — são
@@ -137,9 +167,30 @@ Usar apenas nos textos internos de análise — não incluir nos reports enviado
 
 ---
 
-## FASE 0 — LEITURA DAS ORIENTAÇÕES EDITORIAIS
+## FASE 0 — RESOLUÇÃO DE SKILLS E LEITURA DAS ORIENTAÇÕES EDITORIAIS
 
-**Objetivo:** Carregar as instruções de análise de cada canal antes de qualquer coleta de dados.
+### Passo 0 — Resolução de skills organizacionais (executar primeiro, sempre)
+
+Para cada skill organizacional listada no cabeçalho deste arquivo
+(`cx-product-insights`, `cx-orchestrator-reference`, `cx-helpcenter-impact`):
+
+1. Tentar `/mnt/skills/organization/{nome}/` — caminho do ambiente de chat/Cowork
+2. Se não existir, tentar `/root/.claude/skills/{nome}/` — caminho do ambiente de
+   execução das Routines (Claude Code)
+3. Se encontrado em qualquer um dos dois, verificar se os arquivos de `references/`
+   específicos necessários também estão presentes (não só o `SKILL.md`)
+4. Se a skill ou seus arquivos de `references/` necessários não forem encontrados em
+   nenhum dos dois caminhos: aplicar o fallback da tabela "Fallback — quando a skill
+   organizacional não estiver disponível" (seção acima) — **não bloquear a execução**,
+   exceto no caso específico de `cx-product-insights` totalmente ausente (ver nota
+   sobre bloqueio legítimo na mesma seção)
+5. Registrar internamente quais skills/arquivos vieram de qual fonte (organizacional
+   ou fallback do repositório) — esse registro alimenta a sinalização obrigatória nos
+   reports afetados
+
+### Objetivo (orientações editoriais)
+
+Carregar as instruções de análise de cada canal antes de qualquer coleta de dados.
 
 **Arquivo:** `orientacoes-editoriais.md` (neste repositório)
 
@@ -917,6 +968,8 @@ Ao citar conteúdo de tickets: omitir CPF, telefone, e-mail e dados bancários.
 
 Antes de encerrar a Routine, verificar:
 - [ ] `MODO` identificado corretamente (RASCUNHO ou VALIDACAO) a partir do prompt recebido
+- [ ] Fase 0 Passo 0 (resolução de skills organizacionais) executado — tentados os 2 caminhos antes de qualquer fallback
+- [ ] Se fallback usado: sinalização "ℹ️ Exclusões/tags calculadas via repositório interno" incluída nos reports afetados
 - [ ] Fase 0 (orientações editoriais) lida ou registrada como ⚠️
 - [ ] Fase 1 (Tabela de Eventos e Incidentes — 10 canais, 14 dias) construída ou registrada como ⚠️
 - [ ] Correlação cruzada aplicada — eventos de outras squads checados em cada report, não só os do próprio canal
