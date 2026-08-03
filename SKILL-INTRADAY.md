@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "1.5"
+version: "1.6"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -159,11 +159,12 @@ de confiar em um nome genérico.
 }
 ```
 
-**⚠️ Custo — não consultar os 836 artigos a cada execução.** Manter uma lista curta
-("watchlist") dos artigos de maior volume/relevância por vertical (recalibrar
-mensalmente, não a cada execução) — consultar só esses na rotina intraday. Para
-descoberta ampla de novos artigos relevantes, isso é trabalho do pipeline semanal ou de
-investigação pontual, não desta rotina de alta frequência.
+**⚠️ Custo — não consultar os 836 artigos a cada execução.** Usar
+`watchlist-artigos-central-ajuda.json` (neste repositório) — lista curada com volume
+real já validado via `query_dataset` (não suposto). Consultar apenas os eventos listados
+lá a cada execução. O arquivo tem uma seção `pendente_validacao` com verticais ainda sem
+artigo confirmado — expandir isso é trabalho pontual/mensal, não desta rotina de alta
+frequência. Recalibrar mensalmente: volumes mudam com sazonalidade e mudança de produto.
 
 **Dashboard oficial já existente:** `Central de Ajuda - Priorities` (ID `r6xbrrzp`,
 dono Juan Amezaga) tem 7 charts — pelo menos um é do tipo funil/conversão (artigo →
