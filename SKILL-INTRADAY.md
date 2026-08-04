@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "2.0"
+version: "2.1"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -138,114 +138,24 @@ brand:RecargaPay created>={DIA_ANTERIOR_MESMO_HORARIO_INICIO_UTC} created<={DIA_
 
 ### 1B — Acessos à Central de Ajuda (Amplitude, ao vivo — com fallback via Zendesk)
 
-**Ferramenta:** Amplitude — `Amplitude:query_dataset` (não `use_amplitude_metrics`, que
-é só administração de definição de métrica/goal, não consulta de valor).
+**Ver `skill-amplitude.md` (neste repositório) para o protocolo completo** — project
+ID, taxonomia de evento, notas de schema do `query_dataset`, e o padrão de limitação de
+ambiente já confirmado em execuções anteriores (só `use_amplitude_metrics` disponível
+em algumas sessões). Ler essa skill antes de qualquer consulta ao Amplitude.
 
-**Project ID confirmado:** `332381` (app principal RecargaPay).
-
-⚠️ **Correção Jul/2026 — validado empiricamente ao vivo:** uma execução anterior desta
-Routine concluiu que Amplitude não expunha ferramentas de consulta de dado (só
-`use_amplitude_metrics`) nesta sessão. Isso **não é uma limitação estrutural do
-conector** — é específico daquele ambiente de execução. Testado diretamente:
-`query_dataset` e `search` funcionam e retornam dado real e atual (mesmo padrão do
-achado anterior com Google Sheets: uma ferramenta parecer indisponível não significa
-que o conector inteiro está limitado — testar outra ferramenta do mesmo conector antes
-de desistir).
-
-**Taxonomia de evento — fragmentada por artigo, não um evento genérico único:**
-
-Não existe um evento único "acesso a artigo" com uma propriedade de artigo/path — cada
-artigo da Central de Ajuda tem seu **próprio nome de evento**, no padrão:
-```
-ViewedHelp / {Seção} - {Título do Artigo} - /help/articles/{slug}#article-container
-```
-Exemplo real testado: `ViewedHelp / Cartão RecargaPay - Como funciona a anuidade do
-cartão? - /help/articles/Como-funciona-a-anuidade-do-cartão#article-container` — retornou
-dado real (1–3 acessos únicos/dia na semana testada, com dado até o próprio dia da
-consulta).
-
-**⚠️ Cuidado com eventos "genéricos" de nome parecido — podem estar obsoletos:**
-`Viewed /central-de-ajuda` (o nome mais óbvio para "acesso à Central de Ajuda") retornou
-**zero em todos os dias** dos últimos 30 dias testados — está obsoleto, não é mais
-disparado. Uma variante mais recente, `Viewed /recarga:///central-de-ajuda`, está viva
-mas com volume muito pequeno (1–8/dia) — provavelmente um ponto de entrada específico
-(deep link), não o fluxo principal. **Não usar nenhum desses dois como proxy do volume
-total de acessos** — confirmar sempre via `lastModified` do evento (usar `search`) antes
-de confiar em um nome genérico.
-
-**Metodologia recomendada — duas etapas:**
-
-1. **Catálogo de artigos:** obter via Zendesk Guide (`list_help_center_articles`) — 836
-   artigos com título, seção e URL confirmados como disponíveis nesta ferramenta.
-2. **Consulta de acesso por artigo:** para cada artigo de interesse, montar o nome do
-   evento correspondente (padrão acima) e consultar via `query_dataset`:
-```json
-{
-  "app": "332381",
-  "type": "eventsSegmentation",
-  "name": "Acessos artigo - {nome}",
-  "params": {
-    "range": "Last 7 Days",
-    "events": [{"event_type": "ViewedHelp / {Seção} - {Título} - /help/articles/{slug}#article-container", "filters": [], "group_by": []}],
-    "metric": "uniques",
-    "countGroup": "User",
-    "groupBy": [],
-    "interval": 1,
-    "segments": [{"conditions": []}]
-  }
-}
-```
-
-**⚠️ Custo — não consultar os 836 artigos a cada execução.** Usar
-`watchlist-artigos-central-ajuda.json` (neste repositório) — lista curada com volume
-real já validado via `query_dataset` (não suposto). Consultar apenas os eventos listados
-lá a cada execução. O arquivo tem uma seção `pendente_validacao` com verticais ainda sem
-artigo confirmado — expandir isso é trabalho pontual/mensal, não desta rotina de alta
-frequência. Recalibrar mensalmente: volumes mudam com sazonalidade e mudança de produto.
-
-**Dashboard oficial já existente:** `Central de Ajuda - Priorities` (ID `r6xbrrzp`,
-dono Juan Amezaga) tem 7 charts — pelo menos um é do tipo funil/conversão (artigo →
-próxima ação), não "top artigos por view" simples. Vale consultar antes de recriar
-análises do zero — mas não usar `chartId` para herdar parâmetros de um chart de tipo
-diferente do que se está construindo (retorna erro de tipo incompatível).
-
-**Baseline (mesmo recorte de horário):** mesma lógica do item 1A — consultar os últimos
-4 dias úteis comparáveis no mesmo intervalo de horário via o mesmo evento.
-
-**⚠️ Correção Ago/2026 — segunda execução real confirmou o mesmo bloqueio (só
-`use_amplitude_metrics` disponível), tornando este um padrão recorrente, não pontual.**
-Em vez de simplesmente pular a Fase 1B sem dado quando isso acontecer, usar o fallback
-abaixo — não é o mesmo dado (não é "acesso único a artigo"), mas é um sinal real e
-sempre disponível, direto do Zendesk, que correlaciona com a mesma coisa que se quer
-medir (demanda por ajuda sobre um tema).
-
-**Fallback — proxy via `knowledge-base-reason`/`knowledge-base-sub-reason` (Zendesk, ao vivo):**
-
-Tickets retidos pelo bot (`retencao_chatbot`, já coletados em 1A-ii) carregam a tag do
-tema de Central de Ajuda consultado antes de abrir o ticket
-(`knowledge-base-reason:{tema}`). Isso não mede "visitas ao artigo sem abrir ticket"
-(sempre vai ser um número menor que o Amplitude daria, já que só conta quem depois
-contatou), mas serve como **sinal substituto de demanda por tema** quando o Amplitude
-não responder:
-
-```
-brand:RecargaPay created>={JANELA_INICIO_UTC} created<={JANELA_FIM_UTC}
-tags:retencao_chatbot tags:"knowledge-base-reason:{TEMA}"
--tags:created_for_side_conversation -tags:qa-user -tags:spam
--tags:ticket_fundido -tags:closed_by_merge -tags:fluxo_automatico_sem_interacao
-```
-
-Usar os mesmos temas da watchlist (`watchlist-artigos-central-ajuda.json`) — mapear o
-título de cada artigo monitorado para o `knowledge-base-reason` mais próximo (ex: artigo
-de CDB → tema `investimentos`) e comparar contra o mesmo baseline de horário via esta
-mesma query. **Sinalizar sempre que este número for o fallback**, não o dado real de
-acesso — os dois não são comparáveis diretamente (a query do Zendesk sempre retorna
-menos, porque exige ticket aberto).
-
-Se o Amplitude falhar (testar `search` como diagnóstico antes de assumir) **e** o
-fallback via `knowledge-base-reason` também não trouxer sinal suficiente: aí sim
-registrar ⚠️ e prosseguir apenas com os dados de contatos (1A) — não bloquear a execução
-inteira por isso.
+**Resumo operacional para esta fase:**
+1. Testar disponibilidade real via `tool_search` (não assumir indisponível sem testar)
+2. Consultar apenas os artigos de `watchlist-artigos-central-ajuda.json` — nunca os 836
+   artigos do Help Center
+3. Baseline: mesmo recorte de horário, últimos 4 dias úteis comparáveis (mesma lógica
+   da Fase 1A)
+4. **Se Amplitude genuinamente indisponível** (confirmado via protocolo de
+   `skill-amplitude.md` §1): usar o fallback via `knowledge-base-reason` no Zendesk
+   (`skill-amplitude.md` §6) — sinalizar sempre que o número é fallback, não o dado real
+   de acesso, já que os dois não são comparáveis diretamente (fallback só conta quem
+   abriu ticket, sempre menor que o Amplitude real)
+5. Se nem o Amplitude nem o fallback trouxerem sinal: registrar ⚠️ e prosseguir apenas
+   com os dados de contatos (1A) — não bloquear a execução inteira por isso
 
 ### 1C — NPS e CSAT (planilha IndeCX sincronizada — Google Sheets)
 
