@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "1.6"
+version: "1.7"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -257,14 +257,43 @@ Um item só vira **candidato a alerta** se passar **pelo menos um** destes crit�
 tabela cobre tanto **aumentos inesperados** quanto **quedas inesperadas** — os dois
 sentidos importam, não só picos.
 
+### Classificação de Potencial de Contatos — portão obrigatório para critérios de volume
+
+> ⚠️ **Correção Ago/2026:** dois alertas de Transporte foram disparados alinhados com o
+> threshold percentual, mas de baixo valor prático — a vertical tem volume absoluto
+> baixo, então mesmo um desvio percentual grande representa pouco impacto real de
+> negócio. Os critérios de **pico e queda de volume** (contatos e Central de Ajuda)
+> agora só disparam para verticais classificadas como **Alto potencial de contatos**.
+
+| Potencial de Contatos | Verticais | Critérios de volume (pico/queda) aplicam? |
+|---|---|---|
+| **Alto** | Pix, Cartão de Crédito, Empréstimo, Minha Conta, Conta Desativada, Carteira Desativada | ✅ Sim — thresholds normais das tabelas abaixo |
+| **Médio** | CDB, Tap to Pay, Chargeback Recovery | ⚠️ Só com threshold elevado — dobrar o % exigido (ex: pico vira 160% em vez de 80%) e volume mínimo mais alto (ex: 25 em vez de 15) |
+| **Baixo** | Transporte, RAF, Rendimento CDI, Link de Pagamento, Contas e Boletos, Boleto de Cobrança, Recarga de Celular | ❌ Não disparar pico/queda de volume — ver exceção abaixo |
+
+**Exceção — verticais de Baixo potencial ainda podem alertar via:**
+- **Silêncio total** (zero onde historicamente há volume) — continua valendo para
+  qualquer vertical, independente do potencial, porque zero absoluto é sempre um sinal
+  estrutural (canal quebrado), não uma questão de escala
+- **Canal regulatório** — independente de potencial, tolerância a Ouvidoria/Reclame
+  Aqui/Consumidor.gov/BACEN é sempre baixa
+- **NPS/CSAT crítico** — insatisfação não depende do volume da vertical para importar
+- **Gatilho preventivo** (Fase 2.1, incidente em `#escalation_incidents` ou log da
+  planilha IndeCX) — um incidente real reportado importa independente do potencial de
+  contatos da vertical afetada
+
+⚠️ Esta classificação é uma primeira aproximação baseada nos volumes observados ao
+longo desta conversa — recalibrar com o time se a realidade operacional divergir
+(ex: se Chargeback Recovery se mostrar mais sensível do que "Médio" sugere).
+
 ### Aumentos inesperados
 
 | Critério | Threshold inicial proposto |
 |---|---|
-| Volume de contatos humanos (por vertical) na janela vs. baseline mesmo recorte de horário | **> 80%** acima do baseline, E volume absoluto mínimo de 15 contatos na janela (evita alarme por vertical de baixíssimo volume) |
-| Volume de acessos à Central de Ajuda (por vertical) vs. baseline mesmo recorte | **> 100%** acima do baseline, com volume mínimo de 30 acessos |
-| Concentração em canal regulatório (Ouvidoria, Reclame Aqui, Consumidor.gov, BACEN) | Qualquer volume acima de **3 ocorrências** na janela para uma única vertical — canais regulatórios têm tolerância baixa por natureza |
-| Concentração de feedback muito negativo em CSAT Ouvidoria | **≥ 3** notas 1 (de 5) na janela mencionando o mesmo tema/palavra-chave |
+| Volume de contatos humanos (por vertical, **Alto potencial apenas**) na janela vs. baseline mesmo recorte de horário | **> 80%** acima do baseline, E volume absoluto mínimo de 15 contatos na janela |
+| Volume de acessos à Central de Ajuda (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **> 100%** acima do baseline, com volume mínimo de 30 acessos |
+| Concentração em canal regulatório (Ouvidoria, Reclame Aqui, Consumidor.gov, BACEN) — **qualquer potencial** | Qualquer volume acima de **3 ocorrências** na janela para uma única vertical — canais regulatórios têm tolerância baixa por natureza |
+| Concentração de feedback muito negativo em CSAT Ouvidoria — **qualquer potencial** | **≥ 3** notas 1 (de 5) na janela mencionando o mesmo tema/palavra-chave |
 
 ### Quedas inesperadas
 
@@ -277,12 +306,12 @@ sentidos importam, não só picos.
 
 | Critério | Threshold inicial proposto |
 |---|---|
-| Queda no volume de contatos humanos (por vertical) vs. baseline mesmo recorte | **< 30%** do baseline (ou seja, queda de mais de 70%), E o baseline tinha volume mínimo de 15 contatos no mesmo recorte — evita disparar em vertical que já é naturalmente baixa nesse horário |
-| Queda no volume de acessos à Central de Ajuda (por vertical) vs. baseline mesmo recorte | **< 30%** do baseline, com o baseline tendo volume mínimo de 30 acessos |
-| Silêncio total onde historicamente há volume | **Zero** contatos ou acessos numa vertical/canal cujo baseline no mesmo recorte é **≥ 10** — sinal mais grave de queda, tratar com prioridade máxima |
-| Queda de retenção de bot (vertical específica) — usar retenção **excluindo inatividade** (ver `skill-bot-retention-scenarios.md`) | **< 15%** de retenção engajada na janela, com volume mínimo de 10 sessões de bot |
-| NPS Transacional (por produto, via planilha IndeCX) | **≤ 0 pts** na janela, com volume mínimo de 10 respostas — queda abrupta abaixo de zero é sinal forte, mais rígido que o threshold semanal (55 pts) por ser uma amostra pequena e intraday |
-| CSAT Atendimento N1 (geral, via planilha IndeCX) | **< 50%** de satisfeitos na janela, com volume mínimo de 10 respostas |
+| Queda no volume de contatos humanos (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **< 30%** do baseline (ou seja, queda de mais de 70%), E o baseline tinha volume mínimo de 15 contatos no mesmo recorte |
+| Queda no volume de acessos à Central de Ajuda (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **< 30%** do baseline, com o baseline tendo volume mínimo de 30 acessos |
+| Silêncio total onde historicamente há volume — **qualquer potencial** | **Zero** contatos ou acessos numa vertical/canal cujo baseline no mesmo recorte é **≥ 10** — sinal mais grave de queda, tratar com prioridade máxima independente da classificação de potencial |
+| Queda de retenção de bot (vertical específica) — usar retenção **excluindo inatividade** (ver `skill-bot-retention-scenarios.md`), **qualquer potencial** | **< 15%** de retenção engajada na janela, com volume mínimo de 10 sessões de bot |
+| NPS Transacional (por produto, via planilha IndeCX) — **qualquer potencial** | **≤ 0 pts** na janela, com volume mínimo de 10 respostas — queda abrupta abaixo de zero é sinal forte, mais rígido que o threshold semanal (55 pts) por ser uma amostra pequena e intraday |
+| CSAT Atendimento N1 (geral, via planilha IndeCX) — **qualquer potencial** | **< 50%** de satisfeitos na janela, com volume mínimo de 10 respostas |
 
 **⚠️ Estes thresholds são um ponto de partida, não um valor definitivo.** Vão precisar
 de calibração nas primeiras semanas — thresholds muito baixos geram ruído (mina a
@@ -429,6 +458,7 @@ dados bancários ao citar qualquer trecho.
 - [ ] Dados de hoje vieram de fonte ao vivo (Zendesk MCP + Amplitude via query_dataset + planilha IndeCX), nunca do Databricks — se Amplitude parecer indisponível, testar `search` antes de desistir (pode ser limitação pontual de sessão, não do conector)
 - [ ] Baseline comparado no mesmo recorte de horário, nunca dia completo vs. parcial
 - [ ] Critérios de alta criticidade checados nos dois sentidos — aumentos E quedas inesperadas, não só picos (Fase 2)
+- [ ] Critérios de pico/queda de volume aplicados apenas a verticais de Alto potencial de contatos — Médio com threshold elevado, Baixo excluído (exceto silêncio total/regulatório/NPS-CSAT/preventivo, que valem para qualquer potencial)
 - [ ] Critério de alta criticidade checado primeiro (Fase 2), gerando lista curta de candidatos — sem busca no Slack ainda
 - [ ] `#escalation_incidents` verificado uma única vez (Fase 2.1), não por vertical
 - [ ] Verificação de mapeamento prévio (Fase 3) feita só para os candidatos, nos 2 canais gerais + canal da squad — nunca para as 18 verticais de uma vez
