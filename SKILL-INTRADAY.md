@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "1.8"
+version: "1.9"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -257,30 +257,33 @@ Um item só vira **candidato a alerta** se passar **pelo menos um** destes crit�
 tabela cobre tanto **aumentos inesperados** quanto **quedas inesperadas** — os dois
 sentidos importam, não só picos.
 
-### Classificação de Potencial de Contatos — portão obrigatório para critérios de volume
+### Classificação de Potencial de Contatos — portão obrigatório para volume E preventivo
 
-> ⚠️ **Correção Ago/2026:** dois alertas de Transporte foram disparados alinhados com o
-> threshold percentual, mas de baixo valor prático — a vertical tem volume absoluto
-> baixo, então mesmo um desvio percentual grande representa pouco impacto real de
-> negócio. Os critérios de **pico e queda de volume** (contatos e Central de Ajuda)
-> agora só disparam para verticais classificadas como **Alto potencial de contatos**.
+> ⚠️ **Correção Ago/2026 (v1):** dois alertas de Transporte foram disparados alinhados
+> com o threshold percentual, mas de baixo valor prático — a vertical tem volume
+> absoluto baixo, então mesmo um desvio percentual grande representa pouco impacto real
+> de negócio. Os critérios de **pico e queda de volume** (contatos e Central de Ajuda)
+> passaram a só disparar para verticais classificadas como **Alto potencial de
+> contatos**.
+>
+> ⚠️ **Correção Ago/2026 (v2):** um terceiro alerta de Transporte, desta vez via
+> **gatilho preventivo** (Fase 2.1), mostrou que a exceção que esse gatilho tinha do
+> portão de potencial não deveria existir — o portão agora vale **também** para o
+> preventivo, não só para pico/queda de volume.
 
-| Potencial de Contatos | Verticais | Critérios de volume (pico/queda) aplicam? |
-|---|---|---|
-| **Alto** | Pix, Cartão de Crédito, Empréstimo, Minha Conta, Conta Desativada, Carteira Desativada | ✅ Sim — thresholds normais das tabelas abaixo |
-| **Médio** | CDB, Tap to Pay, Chargeback Recovery | ⚠️ Só com threshold elevado — dobrar o % exigido (ex: pico vira 160% em vez de 80%) e volume mínimo mais alto (ex: 25 em vez de 15) |
-| **Baixo** | Transporte, RAF, Rendimento CDI, Link de Pagamento, Contas e Boletos, Boleto de Cobrança, Recarga de Celular | ❌ Não disparar pico/queda de volume — ver exceção abaixo |
+| Potencial de Contatos | Verticais | Critérios de volume (pico/queda) | Gatilho preventivo (Fase 2.1) |
+|---|---|---|---|
+| **Alto** | Pix, Cartão de Crédito, Empréstimo, Minha Conta, Conta Desativada, Carteira Desativada | ✅ Sim — thresholds normais das tabelas abaixo | ✅ Sim — qualquer incidente mencionado vira candidato |
+| **Médio** | CDB, Tap to Pay, Chargeback Recovery | ⚠️ Só com threshold elevado — dobrar o % exigido (ex: pico vira 160% em vez de 80%) e volume mínimo mais alto (ex: 25 em vez de 15) | ⚠️ Só se o incidente ainda estiver **ativo/não resolvido** no momento da checagem — não basta ter sido mencionado em algum momento da janela |
+| **Baixo** | Transporte, RAF, Rendimento CDI, Link de Pagamento, Contas e Boletos, Boleto de Cobrança, Recarga de Celular | ❌ Não disparar pico/queda de volume — ver exceção abaixo | ❌ Não disparar preventivo — ver exceção abaixo |
 
-**Exceção — verticais de Baixo potencial ainda podem alertar via:**
-- **Silêncio total** (zero onde historicamente há volume) — continua valendo para
-  qualquer vertical, independente do potencial, porque zero absoluto é sempre um sinal
-  estrutural (canal quebrado), não uma questão de escala
-- **Canal regulatório** — independente de potencial, tolerância a Ouvidoria/Reclame
-  Aqui/Consumidor.gov/BACEN é sempre baixa
+**Exceção — verticais de Baixo potencial (e Médio fora do critério acima) ainda podem
+alertar via, independente de potencial:**
+- **Silêncio total** (zero onde historicamente há volume) — zero absoluto é sempre um
+  sinal estrutural (canal quebrado), não uma questão de escala
+- **Canal regulatório** — tolerância a Ouvidoria/Reclame Aqui/Consumidor.gov/BACEN é
+  sempre baixa
 - **NPS/CSAT crítico** — insatisfação não depende do volume da vertical para importar
-- **Gatilho preventivo** (Fase 2.1, incidente em `#escalation_incidents` ou log da
-  planilha IndeCX) — um incidente real reportado importa independente do potencial de
-  contatos da vertical afetada
 
 ⚠️ Esta classificação é uma primeira aproximação baseada nos volumes observados ao
 longo desta conversa — recalibrar com o time se a realidade operacional divergir
@@ -329,19 +332,36 @@ inteiro, ou toda madrugada vai disparar falso alerta de "queda".
 Fazer **uma única busca** (não 18) em `#escalation_incidents` (ID: `CCP2AGBV1`) cobrindo
 a janela desta execução (Fase 0), procurando manutenções/incidentes reportados. Somar a
 isso o log de eventos já lido na Fase 1C (final da planilha IndeCX) — mesma lógica,
-segunda fonte. Para cada resultado de qualquer uma das duas fontes, comparar o campo de
-domínio/produto afetado contra a lista de verticais monitoradas (`canais.json`).
-Qualquer vertical que bater vira **candidato preventivo** — mesmo que ainda não tenha
-anomalia de volume visível (o objetivo declarado desta rotina é agir de forma preditiva,
-não só reativa).
+segunda fonte.
 
-Essa é a única exceção em que uma vertical vira candidata **sem** passar por um
-threshold numérico da tabela acima — o gatilho aqui é a menção de incidente em si, em
-qualquer uma das duas fontes.
+**Passo 1 — Agrupar por incidente antes de qualquer outra coisa.** Ciclos automáticos
+(ex: alertas NewRelic que abrem/fecham repetidamente para o mesmo problema ao longo da
+noite) são **um único incidente**, não um por ciclo. Agrupar todas as ocorrências que
+se referem ao mesmo tema/serviço/domínio dentro da janela em **um candidato só**, usando
+o horário do primeiro ciclo como referência. Não gerar um candidato por ciclo — 6 ciclos
+do mesmo incidente viram 1 candidato, não 6.
+
+**Passo 2 — Aplicar o portão de Potencial de Contatos** (tabela na seção anterior) antes
+de considerar candidato:
+- **Alto potencial:** qualquer incidente agrupado vira candidato, mesmo sem anomalia de
+  volume visível ainda — objetivo preditivo pleno.
+- **Médio potencial:** só vira candidato se o incidente **ainda estiver ativo/não
+  resolvido** no momento da checagem (ex: último ciclo sem status de encerramento) — não
+  basta ter sido mencionado em algum ponto da janela se já foi resolvido.
+- **Baixo potencial:** **não** vira candidato por este gatilho — mesmo um incidente real
+  e confirmado não gera alerta preditivo se a vertical afetada tem potencial de
+  contatos baixo. Resta a exceção geral (silêncio total/regulatório/NPS-CSAT) se algum
+  desses também estiver presente.
+
+**Passo 3 — Verificar se este mesmo incidente já foi alertado numa execução anterior**
+(ver regra de deduplicação entre execuções na Fase 3, que agora também busca em
+`#the-voice-cx`) — um incidente que já gerou alerta às 10h e continua cronologicamente
+o mesmo às 13h (mesmo que com novos ciclos) não deve gerar um segundo alerta idêntico.
 
 **Resultado desta fase:** uma lista curta de verticais candidatas (tipicamente 0 a 3),
-combinando as que passaram algum threshold numérico e/ou bateram no gatilho preventivo.
-Se a lista estiver vazia, encerrar a execução aqui — não é necessário rodar a Fase 3.
+combinando as que passaram algum threshold numérico e/ou bateram no gatilho preventivo
+(após os 3 passos acima). Se a lista estiver vazia, encerrar a execução aqui — não é
+necessário rodar a Fase 3.
 
 ---
 
@@ -357,18 +377,27 @@ execução (Fase 0):
 - `#lideres-cx-e-cxm` (ID: `C052R2X2DEE`)
 - Canal da squad correspondente à vertical do candidato (ver `canais.json` para o
   mapeamento vertical → canal — **ler o arquivo, não presumir o ID**)
+- **`#the-voice-cx`** (ID: `C060F2QUJCD`) — **checagem própria da Routine**, adicionada
+  Ago/2026. Buscar se esta mesma Routine já alertou sobre o mesmo tema/incidente numa
+  execução anterior do dia (10h ou 13h, se a execução atual for 13h ou 16h). Ampliar a
+  janela de busca aqui para cobrir desde o início do dia, não só desde a última
+  execução — um incidente que já foi alertado às 10h e segue em ciclos às 13h/16h **não
+  deve gerar um segundo alerta**, mesmo que a Fase 2.1 o agrupe novamente como candidato.
 
 `#escalation_incidents` **não precisa ser buscado de novo aqui** — já foi coberto na
 Fase 2.1 para toda a janela. Se o candidato veio do gatilho preventivo, ele já está,
-por definição, mapeado nesse canal (mas ainda pode não estar em nenhum dos outros 3,
-o que ainda justifica o alerta se for o caso).
+por definição, mapeado nesse canal (mas ainda pode não estar em nenhum dos outros 4
+verificados aqui, o que ainda justifica o alerta se for o caso).
 
-**Como buscar:** `slack_search_public_and_private` com `in:#canal after:{JANELA_INICIO}`,
+**Como buscar:** `slack_search_public_and_private` com `in:#canal after:{JANELA_INICIO}`
+(usar `after:{INÍCIO_DO_DIA}` especificamente para a checagem em `#the-voice-cx`),
 usando termos relacionados à vertical/tema da anomalia (nome do produto, palavras-chave
 do tipo de problema — instabilidade, erro, indisponível, bug).
 
-**Se encontrar menção que já cobre o tema:** não alertar. A anomalia já está mapeada —
-o objetivo desta rotina é exatamente evitar duplicar isso.
+**Se encontrar menção que já cobre o tema (em qualquer um dos 4 canais, incluindo
+`#the-voice-cx`):** não alertar. A anomalia já está mapeada — o objetivo desta rotina é
+exatamente evitar duplicar isso, inclusive duplicar o próprio alerta que ela mesma já
+disparou antes no mesmo dia.
 
 **Se não encontrar nada:** este é um tema não mapeado — segue para a Fase 4 (envio do
 alerta).
@@ -456,7 +485,10 @@ dados bancários ao citar qualquer trecho.
 - [ ] Dados de hoje vieram de fonte ao vivo (Zendesk MCP + Amplitude via query_dataset + planilha IndeCX), nunca do Databricks — se Amplitude parecer indisponível, testar `search` antes de desistir (pode ser limitação pontual de sessão, não do conector)
 - [ ] Baseline comparado no mesmo recorte de horário, nunca dia completo vs. parcial
 - [ ] Critérios de alta criticidade checados nos dois sentidos — aumentos E quedas inesperadas, não só picos (Fase 2)
-- [ ] Critérios de pico/queda de volume aplicados apenas a verticais de Alto potencial de contatos — Médio com threshold elevado, Baixo excluído (exceto silêncio total/regulatório/NPS-CSAT/preventivo, que valem para qualquer potencial)
+- [ ] Critérios de pico/queda de volume aplicados apenas a verticais de Alto potencial de contatos — Médio com threshold elevado, Baixo excluído (exceto silêncio total/regulatório/NPS-CSAT, que valem para qualquer potencial)
+- [ ] Gatilho preventivo (Fase 2.1) também respeitou o portão de Potencial de Contatos — Baixo potencial não gerou candidato preventivo
+- [ ] Ciclos automáticos repetidos do mesmo incidente (ex: NewRelic) agrupados como 1 candidato só, não 1 por ciclo
+- [ ] Checagem de mapeamento prévio (Fase 3) incluiu busca em `#the-voice-cx` desde o início do dia, para evitar alertar 2x o mesmo incidente em execuções diferentes
 - [ ] Critério de alta criticidade checado primeiro (Fase 2), gerando lista curta de candidatos — sem busca no Slack ainda
 - [ ] `#escalation_incidents` verificado uma única vez (Fase 2.1), não por vertical
 - [ ] Verificação de mapeamento prévio (Fase 3) feita só para os candidatos, nos 2 canais gerais + canal da squad — nunca para as 18 verticais de uma vez
