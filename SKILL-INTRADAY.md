@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "1.9"
+version: "2.0"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -75,18 +75,56 @@ ferramentas ao vivo abaixo para o período coberto por esta execução.
 **Ferramenta:** `zendesk___zendesk` via `[TEST] MCP Gateway AWS AgentCore` — forçar
 consulta direta na ferramenta, não usar cache ou suposição de tendência.
 
+> ⚠️ **Correção Ago/2026 — bug real encontrado em produção:** uma execução real
+> retornou **zero** contatos de bot em ~100 combinações vertical×período. Causa: a
+> instrução anterior pedia para cruzar `tags:retencao_chatbot` com `tags:{TAG_VERTICAL}`
+> na mesma query — mas **82% dos tickets retidos pelo bot não têm tag de vertical de
+> produto** (carregam `produto_não_identificado` em vez disso, classificados por
+> `knowledge-base-reason` — ver `skill-bot-retention-scenarios.md` §3). Cruzar as duas
+> tags simultaneamente sempre vai retornar próximo de zero. **Humanos e bot exigem
+> estratégias de query diferentes** — não é a mesma lógica com uma tag trocada.
+
+#### 1A-i — Contatos humanos (por vertical)
+
 Para cada vertical do `canais.json` (ler o arquivo, não duplicar a lista aqui):
 ```
 brand:RecargaPay created>={JANELA_INICIO_UTC} created<={JANELA_FIM_UTC}
 tags:{TAG_VERTICAL}
+-tags:retencao_chatbot -tags:created_for_side_conversation -tags:qa-user -tags:spam
+-tags:ticket_fundido -tags:closed_by_merge -tags:fluxo_automatico_sem_interacao
+```
+Isto conta só o volume humano por vertical — excluir `retencao_chatbot` explicitamente
+para não misturar as duas populações.
+
+#### 1A-ii — Contatos retidos por bot (NÃO segmentar por tag de vertical de produto)
+
+```
+brand:RecargaPay created>={JANELA_INICIO_UTC} created<={JANELA_FIM_UTC}
+tags:retencao_chatbot
 -tags:created_for_side_conversation -tags:qa-user -tags:spam
 -tags:ticket_fundido -tags:closed_by_merge -tags:fluxo_automatico_sem_interacao
 ```
-Contar separadamente: `tags:retencao_chatbot` (bot) vs sem essa tag (humano) — mesma
-lógica de separação já usada no pipeline semanal (`skill-zendesk-cx.md` §5–6).
+Extrair o volume **geral** (não por vertical) e a proporção com/sem
+`retencao_inatividade_botmaker` (ver `skill-bot-retention-scenarios.md` §1 — ~84% é
+inatividade, não resolução genuína; separar sempre os dois na apresentação).
 
-**Baseline histórico para o mesmo recorte de horário:** rodar a mesma query, mesmo
-filtro de vertical, para os últimos 4 dias úteis comparáveis (mesmo dia da semana
+**Para segmentar por tema/produto (aproximado):** agrupar pela tag
+`knowledge-base-reason:*` presente nos tickets retidos, e usar a tabela de
+correspondência de `skill-bot-retention-scenarios.md` §5 para mapear tema → vertical
+quando precisar cruzar com uma vertical específica. Tratar como estimativa, não número
+oficial exato — mesma ressalva já documentada naquela skill.
+
+**Investigação qualitativa (quando uma anomalia de bot for candidata na Fase 2):** ler o
+corpo/transcrição de 3–5 tickets `retencao_chatbot` representativos diretamente via
+Zendesk (`get_ticket` com `full_comments=true`) para entender o cenário de atendimento
+real — não confiar só em contagem de tags para explicar o que está acontecendo. Priorizar
+tickets sem `retencao_inatividade_botmaker` (retenção engajada real) para entender o que
+o bot está de fato resolvendo, e alguns com a tag para confirmar se é abandono genuíno ou
+um padrão de UX ruim (ex: bot lento, fluxo confuso) que merece atenção mesmo sendo
+"tecnicamente" inatividade.
+
+**Baseline histórico para o mesmo recorte de horário (ambos 1A-i e 1A-ii):** rodar a
+mesma query, mesmo filtro, para os últimos 4 dias úteis comparáveis (mesmo dia da semana
 quando possível), com o **mesmo intervalo de horário** (ex: se a execução é das 13h e a
 janela é 10h–13h de hoje, comparar com o volume das 10h–13h desses mesmos dias
 anteriores) — nunca comparar um recorte parcial de hoje com uma média de dias inteiros,
@@ -95,11 +133,10 @@ isso sempre vai parecer uma queda artificial.
 ```
 -- Baseline: mesmo recorte de horário, últimos 4 dias úteis comparáveis
 brand:RecargaPay created>={DIA_ANTERIOR_MESMO_HORARIO_INICIO_UTC} created<={DIA_ANTERIOR_MESMO_HORARIO_FIM_UTC}
-tags:{TAG_VERTICAL}
-[mesmos filtros de exclusão acima]
+[mesma query de 1A-i ou 1A-ii, conforme o caso]
 ```
 
-### 1B — Acessos à Central de Ajuda (Amplitude, ao vivo)
+### 1B — Acessos à Central de Ajuda (Amplitude, ao vivo — com fallback via Zendesk)
 
 **Ferramenta:** Amplitude — `Amplitude:query_dataset` (não `use_amplitude_metrics`, que
 é só administração de definição de métrica/goal, não consulta de valor).
@@ -175,9 +212,40 @@ diferente do que se está construindo (retorna erro de tipo incompatível).
 **Baseline (mesmo recorte de horário):** mesma lógica do item 1A — consultar os últimos
 4 dias úteis comparáveis no mesmo intervalo de horário via o mesmo evento.
 
-Se o Amplitude falhar de verdade (não apenas uma tool específica — testar `search` como
-diagnóstico) ou o evento do artigo não puder ser confirmado: registrar ⚠️ e prosseguir
-apenas com os dados de contatos (1A) — não bloquear a execução inteira por isso.
+**⚠️ Correção Ago/2026 — segunda execução real confirmou o mesmo bloqueio (só
+`use_amplitude_metrics` disponível), tornando este um padrão recorrente, não pontual.**
+Em vez de simplesmente pular a Fase 1B sem dado quando isso acontecer, usar o fallback
+abaixo — não é o mesmo dado (não é "acesso único a artigo"), mas é um sinal real e
+sempre disponível, direto do Zendesk, que correlaciona com a mesma coisa que se quer
+medir (demanda por ajuda sobre um tema).
+
+**Fallback — proxy via `knowledge-base-reason`/`knowledge-base-sub-reason` (Zendesk, ao vivo):**
+
+Tickets retidos pelo bot (`retencao_chatbot`, já coletados em 1A-ii) carregam a tag do
+tema de Central de Ajuda consultado antes de abrir o ticket
+(`knowledge-base-reason:{tema}`). Isso não mede "visitas ao artigo sem abrir ticket"
+(sempre vai ser um número menor que o Amplitude daria, já que só conta quem depois
+contatou), mas serve como **sinal substituto de demanda por tema** quando o Amplitude
+não responder:
+
+```
+brand:RecargaPay created>={JANELA_INICIO_UTC} created<={JANELA_FIM_UTC}
+tags:retencao_chatbot tags:"knowledge-base-reason:{TEMA}"
+-tags:created_for_side_conversation -tags:qa-user -tags:spam
+-tags:ticket_fundido -tags:closed_by_merge -tags:fluxo_automatico_sem_interacao
+```
+
+Usar os mesmos temas da watchlist (`watchlist-artigos-central-ajuda.json`) — mapear o
+título de cada artigo monitorado para o `knowledge-base-reason` mais próximo (ex: artigo
+de CDB → tema `investimentos`) e comparar contra o mesmo baseline de horário via esta
+mesma query. **Sinalizar sempre que este número for o fallback**, não o dado real de
+acesso — os dois não são comparáveis diretamente (a query do Zendesk sempre retorna
+menos, porque exige ticket aberto).
+
+Se o Amplitude falhar (testar `search` como diagnóstico antes de assumir) **e** o
+fallback via `knowledge-base-reason` também não trouxer sinal suficiente: aí sim
+registrar ⚠️ e prosseguir apenas com os dados de contatos (1A) — não bloquear a execução
+inteira por isso.
 
 ### 1C — NPS e CSAT (planilha IndeCX sincronizada — Google Sheets)
 
@@ -294,7 +362,7 @@ longo desta conversa — recalibrar com o time se a realidade operacional diverg
 | Critério | Threshold inicial proposto |
 |---|---|
 | Volume de contatos humanos (por vertical, **Alto potencial apenas**) na janela vs. baseline mesmo recorte de horário | **> 80%** acima do baseline, E volume absoluto mínimo de 15 contatos na janela |
-| Volume de acessos à Central de Ajuda (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **> 100%** acima do baseline, com volume mínimo de 30 acessos |
+| Volume de acessos à Central de Ajuda (por artigo da watchlist, **Alto potencial apenas**) vs. baseline mesmo recorte — via Amplitude ou fallback `knowledge-base-reason` | **> 100%** acima do baseline, com volume mínimo de 30 acessos (Amplitude) ou 10 tickets (fallback Zendesk — piso menor pois já é uma subamostra de quem abriu ticket) |
 | Concentração em canal regulatório (Ouvidoria, Reclame Aqui, Consumidor.gov, BACEN) — **qualquer potencial** | Qualquer volume acima de **3 ocorrências** na janela para uma única vertical — canais regulatórios têm tolerância baixa por natureza |
 | Concentração de feedback muito negativo em CSAT Ouvidoria — **qualquer potencial** | **≥ 3** notas 1 (de 5) na janela mencionando o mesmo tema/palavra-chave |
 
@@ -312,7 +380,7 @@ longo desta conversa — recalibrar com o time se a realidade operacional diverg
 | Queda no volume de contatos humanos (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **< 30%** do baseline (ou seja, queda de mais de 70%), E o baseline tinha volume mínimo de 15 contatos no mesmo recorte |
 | Queda no volume de acessos à Central de Ajuda (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **< 30%** do baseline, com o baseline tendo volume mínimo de 30 acessos |
 | Silêncio total onde historicamente há volume — **qualquer potencial** | **Zero** contatos ou acessos numa vertical/canal cujo baseline no mesmo recorte é **≥ 10** — sinal mais grave de queda, tratar com prioridade máxima independente da classificação de potencial |
-| Queda de retenção de bot (vertical específica) — usar retenção **excluindo inatividade** (ver `skill-bot-retention-scenarios.md`), **qualquer potencial** | **< 15%** de retenção engajada na janela, com volume mínimo de 10 sessões de bot |
+| Queda de retenção de bot (geral, não por vertical — ver nota de 1A-ii) — usar retenção **excluindo inatividade** (ver `skill-bot-retention-scenarios.md`), **qualquer potencial** | **< 15%** de retenção engajada na janela, com volume mínimo de 10 sessões de bot |
 | NPS Transacional (por produto, via planilha IndeCX) — **qualquer potencial** | **≤ 0 pts** na janela, com volume mínimo de 10 respostas — queda abrupta abaixo de zero é sinal forte, mais rígido que o threshold semanal (55 pts) por ser uma amostra pequena e intraday |
 | CSAT Atendimento N1 (geral, via planilha IndeCX) — **qualquer potencial** | **< 50%** de satisfeitos na janela, com volume mínimo de 10 respostas |
 
