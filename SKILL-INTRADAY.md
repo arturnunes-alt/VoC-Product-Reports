@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "1.7"
+version: "1.8"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -413,8 +413,6 @@ O alerta em si nunca deixa de ser enviado por falta de responsável mapeado — 
 *Checagem de mapeamento prévio:* não encontrado em #escalation_incidents,
 #comunicados_e_atualizações_cx, #lideres-cx-e-cxm nem no canal da squad, na janela
 {JANELA_INICIO}–{JANELA_FIM}.
-
-🔗 https://sites.google.com/recargapay.com/voc/
 ```
 
 **`{LINHA_DE_MENÇÃO}` — três variações possíveis, escolher conforme o caso:**
