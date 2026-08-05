@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "2.1"
+version: "2.2"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -62,6 +62,15 @@ Se a execução das 10h, 13h ou 16h de qualquer dia falhar ou for pulada, a pró
 execução deve estender a janela retroativamente até a última execução **confirmada** —
 nunca assumir que a anterior rodou sem checar.
 
+**⚠️ A execução das 10h tem uma terceira camada de fallback que as outras duas não têm:**
+como a janela dela cobre boa parte do dia útil anterior (T-1), e o Databricks
+(`agg_overview`/`agg_botmaker_metrics`) já tem esse dia consolidado por volta desse
+horário, a execução das 10h — e só ela — pode recorrer ao Databricks como fallback
+adicional para retenção de bot por vertical e acesso a artigos, quando Amplitude e as
+alternativas ao vivo do Zendesk não trouxerem dado suficiente. Ver detalhes em 1A-ii e
+1B. Nas execuções de 13h e 16h, a janela é inteiramente do dia corrente — o Databricks
+não tem esse dado ainda, então essa camada extra não se aplica.
+
 ---
 
 ## FASE 1 — COLETA DE DADOS DO DIA (fontes ao vivo, não Databricks)
@@ -114,6 +123,16 @@ correspondência de `skill-bot-retention-scenarios.md` §5 para mapear tema → 
 quando precisar cruzar com uma vertical específica. Tratar como estimativa, não número
 oficial exato — mesma ressalva já documentada naquela skill.
 
+**Fallback via Databricks — apenas na execução das 10h, quando o acima não for
+suficiente:** `prod.cx.agg_botmaker_metrics` (`stage`, `creation_date` diário — ver
+`skill-databricks-mcp.md` §12) cobre o dia anterior completo, disponível a essa hora.
+Usar para retenção por `stage` como aproximação adicional de "retenção por
+tema"/vertical, com a mesma ressalva já registrada naquela skill: não confirmado se
+`stage` corresponde de forma limpa às verticais de produto — tratar como sinal
+complementar, não substituto do cálculo via `knowledge-base-reason`. Não usar esse
+fallback nas execuções de 13h/16h — a janela delas é só do dia corrente, que o
+Databricks ainda não tem.
+
 **Investigação qualitativa (quando uma anomalia de bot for candidata na Fase 2):** ler o
 corpo/transcrição de 3–5 tickets `retencao_chatbot` representativos diretamente via
 Zendesk (`get_ticket` com `full_comments=true`) para entender o cenário de atendimento
@@ -154,8 +173,18 @@ em algumas sessões). Ler essa skill antes de qualquer consulta ao Amplitude.
    (`skill-amplitude.md` §6) — sinalizar sempre que o número é fallback, não o dado real
    de acesso, já que os dois não são comparáveis diretamente (fallback só conta quem
    abriu ticket, sempre menor que o Amplitude real)
-5. Se nem o Amplitude nem o fallback trouxerem sinal: registrar ⚠️ e prosseguir apenas
-   com os dados de contatos (1A) — não bloquear a execução inteira por isso
+5. **Fallback adicional via Databricks — apenas na execução das 10h:** se Amplitude e o
+   fallback via `knowledge-base-reason` juntos não trouxeram sinal suficiente, consultar
+   CX-009 (`Visitas Únicas Vertical`, `prod.cx.agg_overview` `source='central'`) via
+   `cx-product-insights`. **Atenção: esta fonte é mensal** (ancorada no dia 1 do mês,
+   não diária — ver `SKILL.md` seção "Central de Ajuda — evolução por produto"), então
+   só serve como **contexto aproximado de volume do mês corrente**, não como substituto
+   da janela específica desta execução. Apresentar sempre com essa ressalva explícita
+   quando usado. Não usar esse fallback nas execuções de 13h/16h — não agrega nada além
+   do que a própria execução das 10h já teria coberto no mesmo dia.
+6. Se nem Amplitude, nem o fallback do Zendesk, nem (na execução das 10h) o Databricks
+   trouxerem sinal: registrar ⚠️ e prosseguir apenas com os dados de contatos (1A) — não
+   bloquear a execução inteira por isso
 
 ### 1C — NPS e CSAT (planilha IndeCX sincronizada — Google Sheets)
 
@@ -461,6 +490,7 @@ dados bancários ao citar qualquer trecho.
 
 - [ ] Janela de análise calculada corretamente (Fase 0), considerando falha de execução anterior se aplicável
 - [ ] Dados de hoje vieram de fonte ao vivo (Zendesk MCP + Amplitude via query_dataset + planilha IndeCX), nunca do Databricks — se Amplitude parecer indisponível, testar `search` antes de desistir (pode ser limitação pontual de sessão, não do conector)
+- [ ] Se execução das 10h e Amplitude/Zendesk-fallback insuficientes: fallback via Databricks usado (bot: agg_botmaker_metrics diário; artigos: agg_overview mensal, sinalizado como contexto aproximado, não substituto da janela) — não aplicável nas execuções de 13h/16h
 - [ ] Baseline comparado no mesmo recorte de horário, nunca dia completo vs. parcial
 - [ ] Critérios de alta criticidade checados nos dois sentidos — aumentos E quedas inesperadas, não só picos (Fase 2)
 - [ ] Critérios de pico/queda de volume aplicados apenas a verticais de Alto potencial de contatos — Médio com threshold elevado, Baixo excluído (exceto silêncio total/regulatório/NPS-CSAT, que valem para qualquer potencial)
