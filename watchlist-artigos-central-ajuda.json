@@ -1,19 +1,19 @@
 {
-  "_comentario": "Watchlist de artigos da Central de Ajuda para a Fase 1B do SKILL-INTRADAY.md. Criado em 03/08/2026 com dados reais validados via Amplitude:query_dataset (ultimos 30 dias). Nao consultar os 836 artigos do Help Center a cada execucao -- usar so os listados aqui. Recalibrar mensalmente.",
+  "_comentario": "Watchlist de artigos da Central de Ajuda para a Fase 1B do SKILL-INTRADAY.md. Ultima expansao em 04/08/2026 -- tentativa de cobrir 5 artigos por vertical (18 verticais). Amplitude:query_dataset falhou 3x com 'No approval received' na etapa de validacao em lote apos a busca de candidatos -- mesmo padrao intermitente ja visto com outras ferramentas nesta conversa. Resultado: artigos ja confirmados com numero real permanecem; os demais entraram como CANDIDATOS (nome de evento correto, tema relevante) SEM validacao de volume ainda.",
   "project_id": "332381",
   "metodologia": {
-    "descricao": "Para cada vertical, escolher 1-3 artigos de alto volume real (nao suposto) via Amplitude:search (entityTypes=EVENT, query com nome da vertical) + Amplitude:query_dataset (metric=uniques, range=Last 30 Days) para confirmar volume antes de adicionar aqui.",
-    "criterio_inclusao": "Media diaria >= 10 acessos unicos nos ultimos 30 dias (abaixo disso, o ruido de variacao normal dificulta detectar anomalia real)",
-    "recalibragem": "Mensal -- rodar a mesma busca novamente, artigos podem subir/descer de relevancia conforme mudanca de produto ou sazonalidade"
+    "descricao": "Para cada vertical: Amplitude:search (entityTypes=EVENT, query com nome da vertical/tema) para achar candidatos reais + Amplitude:query_dataset (metric=uniques, range=Last 30 Days) para confirmar volume antes de promover de CANDIDATO para CONFIRMADO.",
+    "criterio_inclusao_confirmado": "Media diaria >= 10 acessos unicos nos ultimos 30 dias",
+    "recalibragem": "Mensal -- rodar a mesma busca novamente"
   },
-  "artigos_monitorados": [
+  "artigos_confirmados": [
     {
       "vertical": "Minha Conta",
       "prioridade": "alta",
       "evento_amplitude": "ViewedHelp / Ajuda login - Não consigo acessar a minha conta - /help/articles/Não-consigo-acessar-a-minha-conta",
       "volume_medio_diario_ultimos_30d": 300,
       "volume_min_max_periodo": [173, 1072],
-      "observacao": "De longe o maior volume de toda a watchlist -- bate com o achado de que selfie/reconhecimento facial e o maior tema de retencao do bot (skill-bot-retention-scenarios.md). Pico de 1072 em 20/07 -- vale investigar se houve incidente nesse dia especifico."
+      "observacao": "De longe o maior volume de toda a watchlist -- bate com o achado de que selfie/reconhecimento facial e o maior tema de retencao do bot (skill-bot-retention-scenarios.md). Pico de 1072 em 20/07 -- vale investigar."
     },
     {
       "vertical": "Pix",
@@ -21,7 +21,7 @@
       "evento_amplitude": "ViewedHelp / Pix - Invadiram minha conta sem eu saber - /help/articles/Invadiram-a-minha-conta-e-eu-não-sabia",
       "volume_medio_diario_ultimos_30d": 80,
       "volume_min_max_periodo": [46, 101],
-      "observacao": "Tema de seguranca/fraude -- volume estavel, sem picos anomalos no periodo de validacao"
+      "observacao": "Tema de seguranca/fraude -- volume estavel"
     },
     {
       "vertical": "CDB / Investimentos",
@@ -29,7 +29,7 @@
       "evento_amplitude": "ViewedHelp / Investimentos - O meu investimento em CDB tem cobrança de imposto de renda? - /help/articles/O-meu-investimento-em-CDB-tem-cobrança-de-imposto-de-renda",
       "volume_medio_diario_ultimos_30d": 140,
       "volume_min_max_periodo": [83, 304],
-      "observacao": "Pico de 304 em 31/07 -- correlacionar com eventuais mudancas de regra fiscal ou comunicado"
+      "observacao": "Pico de 304 em 31/07 -- correlacionar com eventuais mudancas de regra fiscal"
     },
     {
       "vertical": "Minha Conta (Seguranca)",
@@ -37,7 +37,7 @@
       "evento_amplitude": "ViewedHelp / Perfil / Segurança - Como desconectar a conta de um dispositivo? - /help/articles/Como-desconectar-a-conta-de-um-dispositivo",
       "volume_medio_diario_ultimos_30d": 8,
       "volume_min_max_periodo": [3, 16],
-      "observacao": "Abaixo do criterio de inclusao (media <10) -- manter em observacao, retirar se nao subir em proxima recalibragem"
+      "observacao": "Abaixo do criterio de inclusao (media <10) -- manter em observacao"
     },
     {
       "vertical": "Tap to Pay",
@@ -48,41 +48,96 @@
       "observacao": "Volume baixo mas estavel"
     }
   ],
+  "candidatos_pendentes_de_validacao_volume": {
+    "_nota": "Nomes de evento reais e confirmados via Amplitude:search (nao inventados), tema claramente relevante para a vertical -- falta so rodar query_dataset para confirmar volume real antes de promover para artigos_confirmados. Ordenados por relevancia/criticidade percebida dentro de cada vertical.",
+    "Pix": [
+      "ViewedHelp / Pix - Quero contestar um pagamento - /help/articles/quero-contestar-um-pagamento",
+      "ViewedHelp / Pix - Enviei um Pix para a chave errada, e agora? - /help/articles/Enviei-um-Pix-para-a-chave-errada-e-agora",
+      "ViewedHelp / Pix - Minha chave Pix está bloqueada e agora? - /help/articles/Minha-chave-Pix-está-bloqueada-e-agora",
+      "ViewedHelp / Pix - Quais os golpes Pix mais comuns? - /help/articles/Quais-os-golpes-Pix-mais-comuns"
+    ],
+    "Cartão de Crédito": [
+      "ViewedHelp / Cartão RecargaPay - Como funciona a anuidade do cartão? - /help/articles/Como-funciona-a-anuidade-do-cartão",
+      "ViewedHelp / Cartão RecargaPay - Meu cartão foi bloqueado por segurança, o que devo fazer? - /help/articles/Meu-cartão-foi-bloqueado-por-segurança-o-que-devo-fazer",
+      "ViewedHelp / Cartão RecargaPay - Roubaram meu cartão RecargaPay, e agora? - /help/articles/Roubaram-meu-cartão-RecargaPay-e-agora",
+      "ViewedHelp / Cartão RecargaPay - Compra recusada no Cartão RecargaPay. O que fazer? - /help/articles/Compra-recusada-no-Cartão-RecargaPay-O-que-fazer",
+      "ViewedHelp / Cartão RecargaPay - Minha compra foi negada por limite insuficiente - /help/articles/Minha-compra-foi-negada-por-limite-insuficiente"
+    ],
+    "Empréstimo": [
+      "ViewedHelp / Empréstimo - Como aumentar meu limite de empréstimo? - /help/articles/Como-aumentar-meu-limite-de-empréstimo",
+      "ViewedHelp / Empréstimo - Como faço o pagamento do empréstimo? - /help/articles/Como-faço-o-pagamento-do-empréstimo",
+      "ViewedHelp / Empréstimo - Por que meu empréstimo não caiu na carteira? - /help/articles/Por-que-meu-empréstimo-não-caiu-na-carteira",
+      "ViewedHelp / Empréstimo - Tenho renegociação disponível para pagamento? - /help/articles/Tenho-renegociação-disponível-para-pagamento",
+      "ViewedHelp / Empréstimo Consignado - O que é o Empréstimo Crédito Consignado RecargaPay? - /help/articles/O-que-é-o-Empréstimo-Crédito-Consignado-RecargaPay"
+    ],
+    "Minha Conta": [
+      "ViewedHelp / Ajuda login - Usaram meus dados pra criar uma conta - /help/articles/Usaram-meus-dados-pra-criar-uma-conta",
+      "ViewedHelp / Perfil / Segurança - Como encerrar o cadastro? - /help/articles/Como-encerrar-o-cadastro",
+      "ViewedHelp / Ajuda login - Roubaram meu celular - /help/articles/Roubaram-meu-celular"
+    ],
+    "CDB / Investimentos": [
+      "ViewedHelp / Investimentos - Como resgato meu  dinheiro investido no CDB? - /help/articles/Como-resgato-meu-dinheiro-investido-no-CDB",
+      "ViewedHelp / Investimentos - O que é um CDB? - /help/articles/O-que-é-um-CDB",
+      "ViewedHelp / Investimentos - Esse CDB tem liquidez diária? - /help/articles/Esse-CDB-tem-liquidez-diária",
+      "ViewedHelp / Investimentos - Quanto rende um CDB no RecargaPay? - /help/articles/Quanto-rende-um-CDB-no-RecargaPay"
+    ],
+    "Rendimento CDI": [
+      "ViewedHelp / Cashback e rendimento - O que mudou no rendimento da carteira? - /help/articles/O-que-mudou-no-rendimento-da-carteira",
+      "ViewedHelp / Cashback e rendimento - Como funciona o Rendimento CDI? - /help/articles/Como-funciona-o-Rendimento-CDI",
+      "ViewedHelp / Cashback e rendimento - Meu Rendimento não foi depositado e agora? - /help/articles/Meu-Rendimento-não-foi-depositado-e-agora"
+    ],
+    "Movimentações Financeiras": [
+      "ViewedHelp / Contas e boleto - Não recebi na minha conta RP o valor de um TED. O que fazer? - /help/articles/Não-recebi-na-minha-conta-RP-o-valor-de-um-TED-O-que-fazer"
+    ],
+    "Transporte": [
+      "ViewedHelp / Recarga de Transporte - Recarga não validada - Bilhete único SP - /help/articles/Recarga-não-validada-Bilhete-único-SP",
+      "ViewedHelp / Recarga de Transporte - Recarga não validada - VEM (Recife) - /help/articles/Recarga-não-validada-VEM-Recife",
+      "ViewedHelp / Recarga de Transporte - Recarga não validada - Cartão URBS (Curitiba) - /help/articles/Recarga-não-validada-Cartão-URBS-Curitiba",
+      "ViewedHelp / Recarga de Transporte - Recarga não validada - Bilhete Único - Campinas - /help/articles/Recarga-não-validada-Bilhete-Único-Campinas",
+      "ViewedHelp / Recarga de Transporte - Recarga não validada - VAMU (Maceió) - /help/articles/Recarga-não-validada-VAMU-Maceió"
+    ],
+    "Contas e Boletos": [
+      "ViewedHelp / Contas e boleto - Meu pagamento ainda não foi compensado. O que fazer? - /help/articles/Meu-pagamento-ainda-não-foi-compensado-O-que-fazer",
+      "ViewedHelp / Contas e boleto - Posso cancelar um pagamento? - /help/articles/Posso-cancelar-um-pagamento",
+      "ViewedHelp / Contas e boleto - Fiz um pagamento em duplicidade, e agora? - /help/articles/Fiz-um-pagamento-em-duplicidade-e-agora",
+      "ViewedHelp / Contas e boleto - Não consigo realizar um pagamento - /help/articles/Não-consigo-realizar-um-pagamento"
+    ],
+    "Boleto de Cobrança": [
+      "ViewedHelp / Contas e boleto - Como recebo pagamentos com o boleto de cobrança? - /help/articles/Como-recebo-pagamentos-com-o-boleto-de-cobrança"
+    ],
+    "Recarga de Celular": [
+      "ViewedHelp / Recarga de Celular - Recarga não recebida - /help/articles/Recarga-não-recebida",
+      "ViewedHelp / Recarga de Celular - Como cancelar a minha recarga de celular? - /help/articles/Como-cancelar-a-minha-recarga-de-celular"
+    ],
+    "Link de Pagamento": [
+      "ViewedHelp / Link de pagamento - Como cobrar com o Link de pagamento? - /help/articles/Como-cobrar-com-o-Link-de-pagamento"
+    ]
+  },
   "pendente_validacao": {
-    "descricao": "Verticais ainda sem artigo de alto volume confirmado -- precisam de nova rodada de busca+validacao antes de entrar na watchlist oficial",
+    "descricao": "Verticais sem candidato de artigo real e especifico ainda identificado -- precisam de nova rodada de busca (Amplitude:search) mais direcionada antes de qualquer validacao de volume",
     "itens": [
       {
-        "vertical": "Empréstimo",
-        "nota": "Artigo testado (Empréstimo Consignado, /help/articles/emprestimo-consignado) teve volume quase zero (0-1/dia) -- nao e representativo. Buscar outro artigo de Emprestimo com volume real antes de incluir."
-      },
-      {
-        "vertical": "Link de Pagamento",
-        "nota": "Artigo testado (Como cobrar com o Link de pagamento) teve volume muito baixo (0-9/dia) -- abaixo do criterio de inclusao. Produto pode genuinamente ter baixo volume de Central de Ajuda; considerar se vale monitorar mesmo assim dado o perfil de risco (visto na execucao manual anterior com incidente real)."
-      },
-      {
-        "vertical": "Transporte",
-        "nota": "Artigo testado (cashback mudou) teve volume muito baixo (0-8/dia) -- buscar artigo mais generico/popular de Transporte."
-      },
-      {
-        "vertical": "Cartão de Crédito",
-        "nota": "Ainda nao testado nesta rodada -- vertical de alto volume de tickets (visto no pipeline semanal), provavelmente tem artigo de alto volume tambem. Priorizar na proxima expansao da watchlist."
-      },
-      {
-        "vertical": "Conta Desativada / Carteira Desativada",
-        "nota": "Ainda nao testado -- prioridade alta dado o volume historico de tickets dessas verticais."
-      },
-      {
-        "vertical": "Rendimento CDI",
-        "nota": "Ainda nao testado."
-      },
-      {
-        "vertical": "Boleto de Cobrança / Contas e Boletos / Recarga de Celular",
-        "nota": "Ainda nao testado."
+        "vertical": "Pix CC",
+        "nota": "Nao encontrado evento de artigo especifico para Pix via cartao de credito -- os eventos de Pix encontrados nao distinguem CC de Wallet no titulo do artigo. Mesma dificuldade ja registrada em skill-zendesk-cx.md secao 5 (sem tag propria no Zendesk tambem)."
       },
       {
         "vertical": "RAF",
-        "nota": "Ainda nao testado."
+        "nota": "Busca retornou apenas paginas de app (Viewed /share-raf, /user/discounts/raf-rules), nao eventos ViewedHelp de artigo de Central de Ajuda. Pode nao ter artigo dedicado de alto volume, ou o termo de busca precisa ser mais especifico (ex: 'indicacao', 'recompensa indicacao')."
+      },
+      {
+        "vertical": "Conta Desativada",
+        "nota": "Busca retornou paginas de fale-conosco/contato, nao artigos de Central de Ajuda especificos. Precisa de termos de busca mais direcionados (ex: 'conta encerrada', 'reativar conta')."
+      },
+      {
+        "vertical": "Carteira Desativada",
+        "nota": "Mesma situacao -- so encontrado 'Carteira bloqueada por seguranca' como pagina de fale-conosco, nao artigo dedicado."
+      },
+      {
+        "vertical": "Chargeback Recovery",
+        "nota": "Encontrado apenas 'Viewed /shopping/chargeback/landing' (pagina de app, nao Central de Ajuda). Precisa busca mais especifica (ex: 'estorno compra', 'contestar cobranca cartao')."
       }
     ]
-  }
+  },
+  "fallback_sem_responsavel_nota_antiga": "Ver mapeamento-responsaveis.json para o mapeamento real de responsaveis -- nao confundir com este arquivo, que e so sobre artigos.",
+  "proximo_passo_recomendado": "Rodar Amplitude:query_dataset para os candidatos de 'candidatos_pendentes_de_validacao_volume' (idealmente em lotes de 5-8 eventos por chamada, como tentado nesta sessao) assim que a ferramenta responder normalmente -- os nomes de evento ja estao prontos, so falta a chamada de validacao."
 }
