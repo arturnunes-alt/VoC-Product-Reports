@@ -251,6 +251,16 @@ Aplicar em toda query via AgentCore (`zendesk___zendesk`):
   para volume de retenção — ver `skill-bot-retention-scenarios.md` para o mapeamento completo.
 - Tags AND: usar `tags:"tag1 tag2"` (aspas) — `tags:tag1 tags:tag2` separados = OR
 - ⛔ Nunca usar `(tags:A OR tags:B) -tags:C` — retorna zero na Search API
+- ⚠️ **Correção Ago/2026 — ordem das cláusulas `-tags:` importa quando há muitas
+  encadeadas.** Achado empírico: uma query com 7 cláusulas `-tags:` seguidas (6 exclusões
+  padrão + `-tags:retencao_inatividade_botmaker` como a **7ª e última**) retornou 123
+  tickets; a mesma query com `-tags:retencao_inatividade_botmaker` movida para **logo
+  depois do `tags:` positivo** (2ª cláusula) retornou 39 — o valor correto (confirmado
+  isolando cada exclusão individualmente). A última de várias negações encadeadas parece
+  ser descartada silenciosamente pelo parser da Search API, sem erro. **Mitigação:**
+  colocar a exclusão mais crítica/discriminante logo após o(s) filtro(s) positivo(s), não
+  no final de uma cadeia longa de `-tags:` — e, ao introduzir uma nova exclusão numa query
+  já longa, validar o total antes/depois de adicioná-la (não assumir que só soma).
 
 ---
 

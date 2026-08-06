@@ -106,6 +106,25 @@ Chamar com `projectId: "332381"` fora da definição também.
 para validar vários artigos candidatos de uma vez em uma única chamada, em vez de uma
 chamada por artigo (economiza custo).
 
+**⚠️ Correção Ago/2026 — `interval: 1` ignora a restrição de `start`/`end` intraday,
+invalida comparação de janela parcial.** Achado empírico numa execução real da Routine
+intraday: uma query com `start`/`end` cobrindo só 1 hora de um dia passado e uma segunda
+query com `start`/`end` cobrindo o dia inteiro (mesmo dia) retornaram o **mesmo valor
+exato** (448 uniques) — ou seja, com `interval: 1` (bucket diário), a API do Amplitude
+ignora a restrição fina de `start`/`end` dentro do dia e sempre soma o bucket-dia
+completo, não a janela pedida. **Consequência prática:** para a Fase 1B do
+`SKILL-INTRADAY.md` (comparação de janela intraday, ex. 13h–16h vs. mesmo recorte em dias
+anteriores), esta query retorna o **dia completo já decorrido** para dias passados (o que
+parece corretamente alto) contra o **total parcial do dia em andamento** para "hoje" (que
+sempre vai parecer artificialmente baixo por comparação) — exatamente a armadilha que a
+Fase 0 do `SKILL-INTRADAY.md` already avisa para não cair ("nunca comparar um recorte
+parcial de hoje com uma média de dias inteiros"). **Não há workaround de granularidade
+horária confirmado neste `query_dataset` para este tipo de chart** (`interval` aceita só
+valores em dias/semanas/meses para `eventsSegmentation`) — até encontrar um, tratar
+qualquer resultado de Fase 1B desta rotina como ⚠️ **não confiável para o portão de
+criticidade** e não usar para decidir alerta; registrar isso explicitamente na execução
+em vez de reportar o delta calculado como se fosse real.
+
 ---
 
 ## 5. DASHBOARD OFICIAL JÁ EXISTENTE

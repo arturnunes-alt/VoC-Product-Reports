@@ -95,6 +95,29 @@ consulta direta na ferramenta, não usar cache ou suposição de tendência.
 
 #### 1A-i — Contatos humanos (por vertical)
 
+> ⚠️ **Correção Ago/2026 — tags acentuadas quebram o filtro `tags:X` da busca ao vivo,
+> e `canais.json` tem 3 tags dessincronizadas da grafia real.** Achado empírico numa
+> execução real (06/08/2026): `tags:cartão_de_crédito_da_recargapay` (e `tags:empréstimo_`)
+> retornou **zero** tickets via `search_tickets`, mesmo existindo tickets com exatamente
+> essa tag na mesma janela (confirmado contando localmente as tags do payload não
+> filtrado — 36 e 27 ocorrências respectivamente). O filtro `tags:X` da busca ao vivo não
+> parece casar corretamente tags com caractere acentuado (á/ã/é/ô/ç) — usar sem acento
+> silenciosamente retorna zero **sem erro**, o que é pior que uma falha explícita.
+> Além disso, `canais.json` (`tags_zendesk`) guarda a grafia **sem acento** para 3 das 18
+> verticais — divergente da grafia real confirmada em `skill-zendesk-cx.md` §8:
+> | Vertical | `canais.json` (errado) | Tag real no Zendesk (`skill-zendesk-cx.md` §8) |
+> |---|---|---|
+> | Cartão de Crédito | `cartao_de_credito_da_recargapay` | `cartão_de_crédito_da_recargapay` |
+> | Empréstimo | `emprestimo_`, `emprestimo_credito_consignado` | `empréstimo_`, `empréstimo_crédito_consignado` |
+> | Movimentações Financeiras | `movimentacoes_financeiras` | `movimentações_financeiras` |
+> **Workaround obrigatório para estas 3 verticais** até o bug do filtro ser corrigido no
+> MCP: rodar 1A-i **sem** `tags:{TAG_VERTICAL}` (só o filtro de data + exclusões padrão,
+> igual ao corpo da query abaixo sem a segunda linha), pegar a lista completa de tickets
+> retornada, e contar localmente quantos têm a tag correta (com acento) no array `tags`
+> de cada ticket — não confiar em nenhuma contagem vinda de `tags:X` acentuado direto da
+> ferramenta. Para as outras 15 verticais (sem acento na tag real), o filtro `tags:X` da
+> ferramenta funciona normalmente e pode ser usado direto.
+
 Para cada vertical do `canais.json` (ler o arquivo, não duplicar a lista aqui):
 ```
 brand:RecargaPay created>={JANELA_INICIO_UTC} created<={JANELA_FIM_UTC}
