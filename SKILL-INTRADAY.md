@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "2.2"
+version: "2.3"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -165,7 +165,10 @@ em algumas sessões). Ler essa skill antes de qualquer consulta ao Amplitude.
 **Resumo operacional para esta fase:**
 1. Testar disponibilidade real via `tool_search` (não assumir indisponível sem testar)
 2. Consultar apenas os artigos de `watchlist-artigos-central-ajuda.json` — nunca os 836
-   artigos do Help Center
+   artigos do Help Center. O arquivo tem duas seções: `artigos_confirmados` (volume real
+   já validado — usar normalmente) e `candidatos_pendentes_de_validacao_volume` (nome de
+   evento real, tema relevante, mas sem volume confirmado ainda — usar com cautela, ideal
+   validar via `query_dataset` antes de tratar como baseline confiável)
 3. Baseline: mesmo recorte de horário, últimos 4 dias úteis comparáveis (mesma lógica
    da Fase 1A)
 4. **Se Amplitude genuinamente indisponível** (confirmado via protocolo de
