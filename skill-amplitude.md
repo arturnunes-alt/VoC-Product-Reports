@@ -116,6 +116,27 @@ dos 7 charts é do tipo funil/conversão (artigo → próxima ação), não "top
 view" simples — o padrão de análise já estabelecido pelo time pode ser mais sofisticado
 do que uma contagem simples de acessos.
 
+## 5.1 CRIAÇÃO DE CHARTS — URL CONFIRMADA (Ago/2026)
+
+Quando a Fase 5A do `SKILL-INTRADAY.md` precisar criar um chart de acompanhamento
+(ex: para linkar num alerta), usar `Amplitude:save_chart_edits` a partir de uma
+`query_dataset` já rodada. **Formato de URL confirmado com chart real**, criado numa
+execução anterior via solicitação manual:
+
+```
+https://app.amplitude.com/analytics/{org}/chart/{chartId}
+```
+
+**Exemplo real:** `https://app.amplitude.com/analytics/recargapay/chart/sqxxjhxy`
+
+- `{org}` é fixo: `recargapay`
+- `{chartId}` é o identificador retornado por `save_chart_edits` ao persistir o chart
+
+**Configuração recomendada para o chart criado** (mesmo padrão do exemplo real —
+"Gráfico de acompanhamento"): tendência diária (`interval: 1`) com `range: "Last 90 Days"`
+— dá uma visão de acompanhamento de médio prazo, mais útil para quem for abrir o link
+depois do alerta do que o recorte curto (7 ou 30 dias) usado só para detectar a anomalia.
+
 ---
 
 ## 6. FALLBACK — QUANDO AMPLITUDE NÃO RESPONDER (Zendesk, sempre disponível)
