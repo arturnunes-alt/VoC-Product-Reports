@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "2.6"
+version: "2.7"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -331,8 +331,9 @@ sentidos importam, não só picos.
 alertar via, independente de potencial:**
 - **Silêncio total** (zero onde historicamente há volume) — zero absoluto é sempre um
   sinal estrutural (canal quebrado), não uma questão de escala
-- **Canal regulatório** — tolerância a Ouvidoria/Reclame Aqui/Consumidor.gov/BACEN é
-  sempre baixa
+- **Canal público/reputacional** — tolerância a Reclame Aqui e redes sociais é sempre
+  baixa, por serem canais visíveis a terceiros (escopo restrito, ver nota na tabela de
+  Aumentos inesperados — Ouvidoria/Consumidor.gov/BACEN/PROCON não entram mais aqui)
 - **NPS/CSAT crítico** — insatisfação não depende do volume da vertical para importar
 
 ⚠️ Esta classificação é uma primeira aproximação baseada nos volumes observados ao
@@ -345,9 +346,18 @@ longo desta conversa — recalibrar com o time se a realidade operacional diverg
 |---|---|
 | Volume de contatos humanos (por vertical, **Alto potencial apenas**) na janela vs. baseline mesmo recorte de horário | **> 80%** acima do baseline, E volume absoluto mínimo de 15 contatos na janela |
 | Volume de acessos à Central de Ajuda (por artigo da watchlist, **Alto potencial apenas**) vs. baseline mesmo recorte — via Amplitude ou fallback `knowledge-base-reason` | **> 100%** acima do baseline, com volume mínimo de 30 acessos (Amplitude) ou 10 tickets (fallback Zendesk — piso menor pois já é uma subamostra de quem abriu ticket) |
-| Concentração em canal regulatório (Ouvidoria, Reclame Aqui, Consumidor.gov, BACEN) — **qualquer potencial** | Qualquer volume acima de **3 ocorrências** na janela para uma única vertical — canais regulatórios têm tolerância baixa por natureza |
+| Concentração em canal de exposição pública/reputacional (Reclame Aqui, redes sociais) — **qualquer potencial** | Qualquer volume acima de **3 ocorrências** na janela para uma única vertical — esses dois canais são públicos e visíveis a terceiros, diferente dos demais regulatórios |
 | Concentração de feedback muito negativo em CSAT Ouvidoria — **qualquer potencial** | **≥ 3** notas 1 (de 5) na janela mencionando o mesmo tema/palavra-chave |
 | Aumento de tickets derivados como bug (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **> 60%** acima do baseline, com volume mínimo de 5 tickets — threshold mais sensível que contatos gerais, pois bug é sinal técnico específico, não flutuação de demanda |
+
+> ⚠️ **Correção Ago/2026 — escopo restrito a impacto reputacional:** o critério de
+> canal público/reputacional deixou de cobrir Ouvidoria, Consumidor.gov, BACEN e
+> PROCON. Esses canais continuam relevantes para compliance/regulatório, mas não têm a
+> mesma exposição pública imediata de Reclame Aqui e redes sociais (não são visíveis a
+> terceiros em tempo real da mesma forma) — por isso saíram do critério de alta
+> frequência/baixo threshold desta rotina. Reclamações nesses canais continuam sendo
+> capturadas normalmente no volume geral de contatos (critério de pico/queda) e no
+> pipeline semanal — só não disparam mais este gatilho específico de baixo threshold.
 
 ### Quedas inesperadas
 
@@ -380,6 +390,13 @@ inteiro, ou toda madrugada vai disparar falso alerta de "queda".
 
 ### 2.1 — Gatilho preventivo (`#escalation_incidents` + log de eventos da planilha IndeCX)
 
+> ⚠️ **Correção Ago/2026 (v3) — criticidade aumentada após análise real da semana de
+> 03–07/08:** 3 dos 9 alertas da semana foram sobre a mesma instabilidade recorrente de
+> Transporte (NewRelic, auto-cicla e resolve em ~1h), **sempre concluindo "sem impacto de
+> volume"** — em dois dos três, o volume estava *abaixo* do normal. Transporte é
+> vertical de Baixo potencial; isso nunca deveria ter gerado alerta. Os passos abaixo
+> foram reforçados para que isso não se repita.
+
 Fazer **uma única busca** (não 18) em `#escalation_incidents` (ID: `CCP2AGBV1`) cobrindo
 a janela desta execução (Fase 0), procurando manutenções/incidentes reportados. Somar a
 isso o log de eventos já lido na Fase 1C (final da planilha IndeCX) — mesma lógica,
@@ -392,26 +409,46 @@ se referem ao mesmo tema/serviço/domínio dentro da janela em **um candidato s�
 o horário do primeiro ciclo como referência. Não gerar um candidato por ciclo — 6 ciclos
 do mesmo incidente viram 1 candidato, não 6.
 
-**Passo 2 — Aplicar o portão de Potencial de Contatos** (tabela na seção anterior) antes
-de considerar candidato:
+**Passo 2 — Aplicar o portão de Potencial de Contatos ANTES de qualquer outra
+consideração — este é o primeiro filtro, não um ajuste posterior:**
 - **Alto potencial:** qualquer incidente agrupado vira candidato, mesmo sem anomalia de
   volume visível ainda — objetivo preditivo pleno.
 - **Médio potencial:** só vira candidato se o incidente **ainda estiver ativo/não
   resolvido** no momento da checagem (ex: último ciclo sem status de encerramento) — não
   basta ter sido mencionado em algum ponto da janela se já foi resolvido.
-- **Baixo potencial:** **não** vira candidato por este gatilho — mesmo um incidente real
-  e confirmado não gera alerta preditivo se a vertical afetada tem potencial de
-  contatos baixo. Resta a exceção geral (silêncio total/regulatório/NPS-CSAT) se algum
-  desses também estiver presente.
+- **Baixo potencial:** **descartar imediatamente, sem exceção.** Mesmo um incidente real,
+  confirmado, com múltiplos ciclos ou duração longa — **não gera candidato preventivo**
+  nesta vertical. Isso vale mesmo que o incidente pareça "grave" na descrição (ex:
+  "instabilidade", "afetando múltiplas cidades") — gravidade textual do incidente não
+  substitui o critério de potencial de contatos da vertical.
+  ⚠️ **Exemplo real desta correção:** os 3 alertas de Transporte de 03–04/08 (instabilidade
+  de recarga em SP/Campinas, ciclos NewRelic) deveriam ter sido descartados aqui, neste
+  passo, antes de chegar a qualquer outra análise.
+
+Resta a exceção geral (silêncio total/canal público-reputacional/NPS-CSAT) se algum desses também
+estiver presente — essas continuam valendo para qualquer potencial, independente deste
+gatilho.
 
 **Passo 3 — Verificar se este mesmo incidente já foi alertado numa execução anterior**
 (ver regra de deduplicação entre execuções na Fase 3, que agora também busca em
 `#the-voice-cx`) — um incidente que já gerou alerta às 10h e continua cronologicamente
 o mesmo às 13h (mesmo que com novos ciclos) não deve gerar um segundo alerta idêntico.
 
+**Passo 4 — Suprimir recorrência do mesmo padrão sem impacto novo (novo, Ago/2026):**
+mesmo para verticais de Alto/Médio potencial que passaram o Passo 2, se uma busca em
+`#the-voice-cx` (mesma mecânica do Passo 3, mas com janela de até 48h, não só desde a
+última execução) encontrar um alerta preventivo anterior **para o mesmo
+tema/serviço/domínio** cuja conclusão foi "sem impacto de volume": este novo candidato
+só continua válido se **também** passar um critério reativo (pico/queda/bug da Fase 2) —
+a menção isolada do incidente não basta mais na segunda vez. Isto evita alertar
+repetidamente "ainda sem impacto" para o mesmo problema recorrente que se autocura antes
+de gerar volume real. Se a instabilidade realmente começar a gerar volume, o critério
+reativo vai capturar isso naturalmente — não é necessário manter o preventivo "vivo"
+só por precaução.
+
 **Resultado desta fase:** uma lista curta de verticais candidatas (tipicamente 0 a 3),
 combinando as que passaram algum threshold numérico e/ou bateram no gatilho preventivo
-(após os 3 passos acima). Se a lista estiver vazia, encerrar a execução aqui — não é
+(após os 4 passos acima). Se a lista estiver vazia, encerrar a execução aqui — não é
 necessário rodar a Fase 3.
 
 ---
@@ -661,8 +698,9 @@ feedbacks reais citados na mensagem secundária de evidência (Fase 5D).
 - [ ] Se execução das 10h e Amplitude/Zendesk-fallback insuficientes: fallback via Databricks usado (bot: agg_botmaker_metrics diário; artigos: agg_overview mensal, sinalizado como contexto aproximado, não substituto da janela) — não aplicável nas execuções de 13h/16h
 - [ ] Baseline comparado no mesmo recorte de horário, nunca dia completo vs. parcial
 - [ ] Critérios de alta criticidade checados nos dois sentidos — aumentos E quedas inesperadas, não só picos (Fase 2)
-- [ ] Critérios de pico/queda de volume aplicados apenas a verticais de Alto potencial de contatos — Médio com threshold elevado, Baixo excluído (exceto silêncio total/regulatório/NPS-CSAT, que valem para qualquer potencial)
-- [ ] Gatilho preventivo (Fase 2.1) também respeitou o portão de Potencial de Contatos — Baixo potencial não gerou candidato preventivo
+- [ ] Critérios de pico/queda de volume aplicados apenas a verticais de Alto potencial de contatos — Médio com threshold elevado, Baixo excluído (exceto silêncio total/canal público-reputacional/NPS-CSAT, que valem para qualquer potencial)
+- [ ] Gatilho preventivo (Fase 2.1, Passo 2) aplicou o portão de Potencial de Contatos como PRIMEIRO filtro — Baixo potencial descartado imediatamente, sem exceção, mesmo para incidente com descrição grave
+- [ ] Gatilho preventivo (Fase 2.1, Passo 4) verificou recorrência do mesmo tema em `#the-voice-cx` nas últimas 48h — se já alertado como "sem impacto" antes, exigiu critério reativo adicional para alertar de novo
 - [ ] Ciclos automáticos repetidos do mesmo incidente (ex: NewRelic) agrupados como 1 candidato só, não 1 por ciclo
 - [ ] Checagem de mapeamento prévio (Fase 3) incluiu busca em `#the-voice-cx` desde o início do dia, para evitar alertar 2x o mesmo incidente em execuções diferentes
 - [ ] Critério de alta criticidade checado primeiro (Fase 2), gerando lista curta de candidatos — sem busca no Slack ainda
