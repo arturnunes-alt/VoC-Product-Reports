@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "2.7"
+version: "2.8"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -410,8 +410,16 @@ anterior). Se forem diferentes:
 | NFHR | CX-007 | Report Geral apenas — denominador é TX, não AU |
 | Contact Rate | CX-008 | Report Geral apenas — denominador é TX, não AU |
 | Visitas Únicas Vertical | CX-009 | Funil — Central de Ajuda por vertical |
-| Bugs | CX-013 | Quando relevante para "Destaques da semana" |
+| Bugs | CX-013 | Quando relevante para "Destaques da semana" — coluna `bug_count`, `source='bugs'` |
 | TMR / TMO | CX-014 / CX-015 | Se solicitado especificamente pelo canal |
+
+**TMR/TMO (CX-014/CX-015) — detalhe de uso:** `agg_overview` `source='tempos'`,
+`metric='resolution'` (TMR) ou `metric='occupation'` (TMO), colunas
+`duration_sec_sum`/`duration_count`. Resultado em **dias** (segundos / 86400) — também
+disponível em `hh:mm:ss`, mas atenção: **TMR costuma passar de 24h**, então as "horas"
+no formato `hh:mm:ss` são o total acumulado, não a hora do dia — não confundir com
+horário. Ver SQL completo em `skill-databricks-mcp.md` §4B para investigação granular
+por ticket quando o agregado precisar ser explicado.
 
 **Rankings de motivo de contato e causa raiz:** usar `agg_overview` (não `dim_zendesk_tickets_summary`)
 conforme regra fundamental da skill — `agg_overview` já tem essas dimensões.
