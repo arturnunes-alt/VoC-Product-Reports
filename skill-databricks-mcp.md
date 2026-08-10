@@ -19,11 +19,25 @@ informações que não existem nos tickets em si.
 
 ### 1. `prod.cx.fat_indecx_metrics` — NPS e CSAT (IndeCX)
 
-> ⚠️ **Correção Ago/2026 — estrutura anterior estava incorreta.** A versão anterior
-> desta seção descrevia um campo `metric` com valores `csat-1-5`/`nps-0-10` — isso não
-> existe nesta tabela. A estrutura real, confirmada via `support_tables.sql` oficial de
-> `cx-product-insights`, usa `review_class`/`survey_type`/`quest_level`/`action_name`.
-> Qualquer query anterior baseada em `metric = 'csat-1-5'` está quebrada.
+> ⚠️ **Correção Ago/2026 (v1):** a versão original desta seção usava só `metric =
+> 'csat-1-5'`/`'nps-0-10'` sem `review_class`/`survey_type`/`quest_level` — estrutura
+> incompleta, confirmada via `support_tables.sql` oficial de `cx-product-insights`.
+>
+> ⚠️ **Correção Ago/2026 (v2) — retratação parcial da v1:** a query real de produção
+> `csat_auto_daily` (dashboard Arturito #103, "Bot & IA Agent") **usa `metric =
+> 'csat-1-5'` normalmente**, junto com `review_class` e `action_name` — ou seja, a
+> coluna `metric` **existe de verdade**, a v1 estava errada em dizer que não existia.
+> As duas fontes (`support_tables.sql` e o dashboard real) não se contradizem
+> necessariamente — provavelmente `metric` e `survey_type`/`quest_level` são dimensões
+> diferentes que coexistem na mesma tabela, cada uma útil para um tipo de filtro. Antes
+> de montar uma query nova, confirmar com:
+> ```sql
+> SELECT DISTINCT metric, survey_type, quest_level FROM prod.cx.fat_indecx_metrics LIMIT 30
+> ```
+> Para CSAT de fluxos de bot especificamente, usar `metric = 'csat-1-5'` +
+> `action_name IN (...)` — ver lista confirmada de `action_name` em §12. Para NPS
+> Transacional geral, `survey_type = 'transacional' AND quest_level = 'main'` continua
+> sendo o padrão validado nas queries de §"Queries padrão para a Routine VoC".
 
 Fonte de pesquisas de satisfação a nível de respondente individual (mais granular que
 `agg_overview`, que já vem agregado).
@@ -915,63 +929,156 @@ ORDER BY total_tickets DESC;
 
 ---
 
-## 12. `prod.cx.agg_botmaker_metrics` — Retenção de Bot, CSAT e detalhamento por estágio (Jul/2026)
+## 12. Retenção de Bot, CSAT e detalhamento por estágio — via Dashboard Arturito #103
 
-**Fonte dedicada para % de retenção do RecargaBot, CSAT do bot e análise por estágio do
-fluxo** — substitui qualquer tentativa de calcular retenção a partir de `agg_overview`
-(que só dá volume via `flg_retention_bot`, sem o detalhamento de sessão que esta tabela
-oferece). Também substitui a orientação anterior de usar `fat_botmaker_metrics`.
+> ⚠️ **Correção Ago/2026 — fórmula de retenção ajustada para a lógica oficial do
+> dashboard `Bot & IA Agent`** (Arturito ID 103, `optimus.recargapay.com`). A versão
+> anterior desta seção tinha 3 imprecisões corrigidas aqui:
+> 1. Dizia que `fat_botmaker_metrics` estava "substituída" por `agg_botmaker_metrics` —
+>    **errado**. São tabelas complementares: `agg_botmaker_metrics` é diária/agregada por
+>    stage/tema/fluxo; `fat_botmaker_metrics` é **por ticket** (chave `id_ticket`, join
+>    direto com `dim_zendesk_tickets_summary`) e tem colunas que a agregada não tem
+>    (`flg_passive_abandonment`, `not_understood_count`, `time_bot_seconds` no nível de
+>    ticket individual).
+> 2. A retenção "engajada vs abandono" que eu calculava via
+>    `flg_retention_inactivity`/tag `retencao_inatividade_botmaker` não é como o
+>    dashboard oficial trata o assunto — a query de produção **exclui** tickets com
+>    `flg_passive_abandonment = 1` do cálculo desde a base (`WHERE (b.flg_passive_abandonment
+>    = 0 OR b.flg_passive_abandonment IS NULL)`), em vez de calcular os dois números e
+>    mostrar separado. Adotar essa exclusão como padrão a partir de agora.
+> 3. `flg_invalid_bot` **entra junto** com `flg_retention_bot` na contagem de bot no
+>    dashboard oficial — não é excluído como eu documentava antes para outras análises.
+>    Ticket "bot inválido" ainda conta como população de bot para fins de retenção,
+>    porque ele efetivamente não foi atendido por humano.
+
+### Tabelas envolvidas
+
+| Tabela | Granularidade | Uso |
+|---|---|---|
+| `prod.cx.dim_zendesk_tickets_summary` | Por ticket | Base humano (`flg_human`, `friendly_service_channel`) |
+| `prod.cx.fat_botmaker_metrics` | Por ticket (`id_ticket`) | `flg_passive_abandonment`, `not_understood_count`, `executing_intents_total_count`, `time_bot_seconds`, `time_user_seconds` — joinável direto com a tabela acima |
+| `prod.cx.agg_botmaker_metrics` | Diária, por `stage`/`entry_theme`/`conversation_theme`/fluxo | Série histórica, ranking de estágio/tema, CSAT do bot |
+
+### Colunas de `agg_botmaker_metrics` (lista ampliada)
 
 | Coluna | Descrição |
 |---|---|
 | `creation_date` | Data da sessão |
 | `stage` | Estágio/etapa do fluxo do bot |
-| `total_sessions` | Total de sessões — denominador da retenção |
+| `entry_theme` | Tema de **entrada** da conversa |
+| `conversation_theme` | Tema **resultante** da conversa (pode diferir do de entrada) |
+| `user_id` | Permite cálculo de FCR por usuário (ver `fcr_daily` abaixo) |
+| `total_sessions` | Total de sessões |
 | `attended_by_bot` | Sessões atendidas pelo bot |
-| `retained_by_bot` | Sessões retidas sem transbordo — numerador da retenção |
+| `retained_by_bot` | Sessões retidas sem transbordo |
 | `overflow` | Transbordo intencional para humano |
-| `passive_abandonment` | Cliente abandonou por inatividade |
-| `active_abandonment` | Cliente saiu voluntariamente da sessão |
-| `csat_promoter` / `csat_answered` | CSAT do bot: `csat_promoter / csat_answered` |
-| `fcr_bot_stage_count` | Resolução no primeiro contato, por estágio |
-| `integration_error_api` | Erros de integração via API |
-| `no_continuity_count` | Sessões sem continuidade |
-| `msg_user_sum` / `msg_bot_sum` | Volume de mensagens trocadas |
-| `resolution_seconds_sum/count` | Tempo de resolução (soma/contagem para média) |
-| `time_bot_seconds_sum/count` / `time_user_seconds_sum/count` | Tempo de processamento do bot vs tempo de resposta do usuário |
-| `not_understood_count_sum` | Vezes que o bot não entendeu a intenção |
-| `executing_intents_total_sum` | Total de intents executados |
-| `session_pct_not_understood_sum/count` | % de sessão com trechos não compreendidos |
-| `flg_retention_inactivity` | Separa retenção "real" de retenção por inatividade (falso encerramento) |
-| `flg_hyperpersonalized` / `flg_generative` / `flg_static` | Classificam o fluxo: Hiper / Generativo / Estático / Outro (mutuamente exclusivos, checar nesta ordem) |
+| `passive_abandonment` / `active_abandonment` | Abandono por inatividade / saída voluntária |
+| `fcr_bot_count` / `fcr_bot_stage_count` | Resolução no primeiro contato — geral e por estágio |
+| `csat_promoter` / `csat_answered` | CSAT do bot |
+| `flg_hyperpersonalized` / `flg_generative` / `flg_static` | Tipo de fluxo (checar nesta ordem — mutuamente exclusivos) |
+| `time_bot_seconds_sum/count`, `time_user_seconds_sum/count`, `not_understood_count_sum`, `executing_intents_total_sum`, `resolution_seconds_sum/count`, `integration_error_api`, `no_continuity_count`, `msg_user_sum`, `msg_bot_sum` | Ver descrições na versão anterior desta seção — inalteradas |
 
-### Query — retenção geral do período
+### Query oficial — Distribuição N1/N2 Humano vs Bot vs Automação (`sss_daily`, dashboard 103)
+
+**Esta é agora a fonte de verdade para a Distribuição de Volume de Atendimento** —
+substitui o cálculo que fazíamos só com `agg_overview`/tags do Zendesk live.
 
 ```sql
-SELECT
-  SUM(retained_by_bot) AS retido,
-  SUM(total_sessions) AS total,
-  ROUND(SUM(retained_by_bot) / NULLIF(SUM(total_sessions), 0) * 100, 1) AS pct_retencao
-FROM prod.cx.agg_botmaker_metrics
-WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}';
+SELECT 
+  to_date(created_at_br) AS d, 
+  CASE WHEN friendly_service_channel IN ('e-mail', 'chat online', 'c2c') THEN 'n1' ELSE 'n2' END AS level, 
+  COUNT(DISTINCT CASE WHEN ((flg_retention_automation = True OR flg_retention_bot = True OR flg_invalid_bot = True) 
+       AND friendly_service_channel IN ('e-mail', 'chat online', 'c2c')) THEN id_ticket END) AS bot_auto,
+  COUNT(DISTINCT CASE WHEN (flg_retention_automation = True AND friendly_service_channel = 'e-mail') 
+       THEN id_ticket END) AS auto,
+  COUNT(DISTINCT CASE WHEN ((flg_retention_bot = True OR flg_invalid_bot = True) AND friendly_service_channel = 'chat online') 
+       THEN id_ticket END) AS bot_maker,
+  COUNT(DISTINCT CASE WHEN ((flg_retention_bot = True OR flg_invalid_bot = True) AND friendly_service_channel = 'social media') 
+       THEN id_ticket END) AS bot_social,
+  COUNT(DISTINCT CASE WHEN flg_human = True THEN id_ticket END) AS humano,
+  COUNT(DISTINCT id_ticket) AS tickets
+FROM prod.cx.dim_zendesk_tickets_summary s 
+LEFT JOIN prod.cx.fat_botmaker_metrics b USING (id_ticket) 
+WHERE friendly_service_channel != 'derivacao' 
+  AND (b.flg_passive_abandonment = 0 OR b.flg_passive_abandonment IS NULL)
+  AND created_at_br BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY ALL ORDER BY d;
 ```
 
-### Query — CSAT do bot
+**Leitura dos campos:**
+- `bot_auto` = `auto + bot_maker` exatamente (validado com dado real: 530+553=1083) — é
+  o "bot + automação" combinado dentro de N1
+- `tickets` = `humano + bot_auto` para linhas `n1` (validado: 461+1083=1544) — as
+  categorias são mutuamente exclusivas dentro de N1 após a exclusão de abandono passivo
+- `bot_social` só aparece em linhas `n2` (porque `social media` cai no `ELSE 'n2'` do
+  `CASE` de `level`) — condiz com a decisão de negócio já documentada de que redes
+  sociais entram em N2 nesta Routine (`SKILL.md` §"Classificação de Potencial de Contatos"
+  / Distribuição de Volume)
+- `auto` é **restrito ao canal e-mail** — automação em outros canais N1 não entra nesse
+  número isolado, só no `bot_auto` combinado
+
+**Retenção de Bot (fórmula corrigida):**
+```
+Retenção Bot (chat online) = bot_maker / (humano + bot_maker)
+Retenção Bot (social media) = bot_social / (humano_n2 + bot_social)
+```
+Já vem líquida de abandono passivo (excluído na cláusula WHERE) — não é necessário
+calcular "engajada vs abandono" separadamente como versões anteriores desta skill
+instruíam. Se quiser investigar abandono especificamente, consultar
+`passive_abandonment`/`active_abandonment` em `agg_botmaker_metrics` à parte, como
+métrica de diagnóstico, não como componente da retenção reportada.
+
+### Query — CSAT do bot (por `action_name` confirmado, via `fat_indecx_metrics`)
+
+`csat_auto_daily` (dashboard 103) confirma que `fat_indecx_metrics` **tem sim** um campo
+`metric` (contradição parcial com a correção de §1 — ver nota ali) usado junto com
+`action_name` para isolar CSAT de fluxos de bot específicos:
 
 ```sql
-SELECT
-  ROUND(SUM(csat_promoter) / NULLIF(SUM(csat_answered), 0) * 100, 1) AS csat_bot_pct
-FROM prod.cx.agg_botmaker_metrics
-WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}';
+SELECT DATE(answer_date) AS d,
+  SUM(CASE WHEN review_class = 'promotor' THEN 1 ELSE 0 END) AS promoter_count,
+  SUM(CASE WHEN review_class = 'neutro'   THEN 1 ELSE 0 END) AS neutral_count,
+  SUM(CASE WHEN review_class = 'detrator' THEN 1 ELSE 0 END) AS detractor_count
+FROM prod.cx.fat_indecx_metrics
+WHERE answer_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+  AND metric = 'csat-1-5'
+  AND action_name IN (
+    'bot raf: problemas na indicação','bot pix: denúncia de fraude',
+    'csat bot fluxo cc rp cancelamento','bot cartão rp: ativação',
+    'bot cartão rp: vencimento','bot cartão rp: cashback','bot cartão rp: fatura',
+    'bot cartão rp: saldo reservado','csat bot fluxo cc rp rendimento',
+    'bot cartão rp: pré-aprovado','bot cartão rp: solicitação',
+    'bot cartão rp: modalidade','bot cartão rp: empréstimo','bot cartão rp: entrega',
+    'csat bot saldo não utilizado','bot fraude: declined',
+    'bot  benefícios: bônus carteira','bot pix: infração pix',
+    'bot cartão rp: conta cartão desativada','bot unificado (eteg)',
+    'bot transporte: validação recarga','csat bot timeou transporte',
+    'csat bot timeou blocked','csat bot timeou wallet',
+    'bot fraude: transação bloqueada','bot fraude: carteira bloqueada',
+    'bot pix: pix enviado errado','bot empréstimos: pedir empréstimo',
+    'bot pagamentos: cc error','bot pagamentos: validação cartão',
+    'csat bot fluxo para fraude pix','bot pagamentos: adição de cartão',
+    'bot empréstimos: limite','bot minha conta: validação',
+    'bot cartão rp: limite garantido','bot cartão rp: resgate de saldo',
+    'bot cashback: recebimento','bot pix: compensação de pix',
+    'bot contas: compensação de boletos'
+  )
+GROUP BY ALL ORDER BY d;
 ```
+Esta lista de `action_name` é a fonte de verdade confirmada para CSAT de bot por fluxo —
+usar em vez de tentar descobrir/adivinhar nomes via `SELECT DISTINCT` para esses fluxos
+específicos.
 
-### Query — ranking de estágios (`stage_rank`, adaptado do exemplo fornecido)
+### Query — ranking de estágios (`stage_daily`, dashboard 103)
 
 ```sql
 SELECT
   stage,
   SUM(total_sessions) AS sess,
   SUM(retained_by_bot) AS ret,
+  SUM(overflow) AS ovf,
+  SUM(active_abandonment) AS aab,
+  SUM(passive_abandonment) AS pab,
   SUM(fcr_bot_stage_count) AS fcr,
   SUM(csat_promoter) AS cprom,
   SUM(csat_answered) AS cans,
@@ -983,11 +1090,30 @@ ORDER BY sess DESC
 LIMIT 18;
 ```
 
-Para "Top temas de não-retenção" do template de report: mesma query, mas ordenar por
-`pct_retencao ASC` com `HAVING SUM(total_sessions) >= 10`, e olhar `overflow` vs
-`passive_abandonment`/`active_abandonment` do estágio para explicar a causa.
+Para "Top temas de não-retenção": mesma query, ordenar por `pct_retencao ASC` com
+`HAVING SUM(total_sessions) >= 10`, olhando `overflow` vs `passive_abandonment`/
+`active_abandonment` para explicar a causa.
 
-### Query — série diária completa (`daily_main`, adaptado do exemplo fornecido)
+### Query — FCR por usuário (`fcr_daily`, dashboard 103 — nova)
+
+```sql
+WITH pu AS (
+  SELECT creation_date AS d, user_id,
+    SUM(attended_by_bot) AS att, SUM(fcr_bot_count) AS fcr, SUM(total_sessions) AS sess
+  FROM prod.cx.agg_botmaker_metrics
+  WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}' AND user_id IS NOT NULL
+  GROUP BY creation_date, user_id
+)
+SELECT d,
+  COUNT(CASE WHEN att > 0 AND fcr = sess THEN 1 END) AS users_fcr,
+  COUNT(CASE WHEN att > 0 THEN 1 END) AS users_att
+FROM pu GROUP BY d ORDER BY d;
+```
+FCR por usuário = usuário cuja sessão foi 100% resolvida no primeiro contato (`fcr = sess`)
+— mais rígido que FCR por sessão isolada, útil para saber se o *cliente*, não só a
+*sessão*, teve resolução completa.
+
+### Query — série diária completa (`daily_main`, dashboard 103)
 
 ```sql
 SELECT
@@ -1000,20 +1126,6 @@ SELECT
   SUM(active_abandonment) AS aab,
   SUM(csat_promoter) AS cprom,
   SUM(csat_answered) AS cans,
-  SUM(integration_error_api) AS integ,
-  SUM(no_continuity_count) AS noc,
-  SUM(msg_user_sum) AS mu,
-  SUM(msg_bot_sum) AS mb,
-  SUM(resolution_seconds_sum) AS rs,
-  SUM(resolution_seconds_count) AS rc,
-  SUM(CASE WHEN flg_retention_inactivity = false THEN resolution_seconds_sum ELSE 0 END) AS rs_no,
-  SUM(CASE WHEN flg_retention_inactivity = false THEN resolution_seconds_count ELSE 0 END) AS rc_no,
-  SUM(time_bot_seconds_sum) AS tbs,
-  SUM(time_bot_seconds_count) AS tbc,
-  SUM(time_user_seconds_sum) AS tus,
-  SUM(time_user_seconds_count) AS tuc,
-  SUM(not_understood_count_sum) AS nu,
-  SUM(executing_intents_total_sum) AS ei,
   SUM(CASE WHEN flg_hyperpersonalized THEN total_sessions ELSE 0 END) AS sess_hyper,
   SUM(CASE WHEN NOT flg_hyperpersonalized AND flg_generative THEN total_sessions ELSE 0 END) AS sess_gen,
   SUM(CASE WHEN NOT flg_hyperpersonalized AND NOT flg_generative AND flg_static THEN total_sessions ELSE 0 END) AS sess_static,
@@ -1024,43 +1136,23 @@ WHERE creation_date BETWEEN '{DATA_INICIO_SERIE}' AND '{DATA_FIM}'
 GROUP BY creation_date
 ORDER BY creation_date;
 ```
-
 Usar para montar a série de 5 semanas de retenção e CSAT do bot (agregar por semana com
 `DATE_TRUNC('week', creation_date)` sobre o resultado diário).
 
-### Query — abertura por tipo de fluxo (`flow_daily`, adaptado do exemplo fornecido)
-
-```sql
-SELECT
-  creation_date AS d,
-  CASE
-    WHEN flg_hyperpersonalized THEN 'Hiper'
-    WHEN flg_generative THEN 'Generativo'
-    WHEN flg_static THEN 'Estatico'
-    ELSE 'Outro'
-  END AS fluxo,
-  SUM(total_sessions) AS sess,
-  SUM(csat_promoter) AS cprom,
-  SUM(csat_answered) AS cans
-FROM prod.cx.agg_botmaker_metrics
-WHERE creation_date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
-GROUP BY creation_date, fluxo
-ORDER BY creation_date;
-```
-
-Opcional — usar em "Destaques da semana" apenas se houver variação relevante entre tipos
-de fluxo (ex: queda de CSAT concentrada no fluxo Generativo, não no Estático).
-
 ### Regras de uso
 
-- **Retenção e CSAT do bot vêm sempre desta tabela**, nunca de `agg_overview` ou de
-  cálculo manual a partir de tickets.
-- **Volume absoluto do RecargaBot** (para a seção "Distribuição de Volume de Atendimento")
-  continua vindo de `agg_overview` (`flg_retention_bot = true`, `ticket_count`) — as duas
-  fontes não são substitutas uma da outra, cobrem perguntas diferentes.
-- `overflow` explica transbordo **intencional** (o bot decidiu escalar); `passive_abandonment`
-  e `active_abandonment` explicam **desistência do cliente** — nunca tratar os três como
-  sinônimo de "não retenção" sem diferenciar a causa no report.
-- Confirmar via `databricks_preview_query` se `stage` tem alguma correspondência com as
-  verticais do `canais.json` antes de tentar segmentar retenção por produto — pode ser uma
-  taxonomia própria do fluxo de bot, distinta da Vertical usada no restante da Routine.
+- **Distribuição N1/N2 Humano/Bot/Automação vem da query `sss_daily` acima**, não mais
+  de um cálculo isolado via `agg_overview` — essa é a fonte oficial validada com dado
+  real do dashboard 103.
+- **Retenção de Bot já vem líquida de abandono passivo** — não recalcular
+  "engajada vs abandono" separadamente, a exclusão já está na query oficial.
+- **`flg_invalid_bot` conta como bot para fins de retenção/distribuição** — diferente da
+  regra usada em outras análises desta Routine (onde `flg_invalid_bot = false` é
+  filtro obrigatório) — não confundir as duas regras, são propósitos diferentes.
+- `overflow` explica transbordo **intencional**; `active_abandonment` explica desistência
+  voluntária — os dois continuam distintos de `passive_abandonment`, que agora é excluído
+  na base em vez de reportado separadamente.
+- Confirmar via `databricks_preview_query` se `entry_theme`/`conversation_theme`/`stage`
+  têm alguma correspondência direta com as verticais do `canais.json` antes de segmentar
+  retenção por produto — são three dimensões de tema distintas, não necessariamente
+  equivalentes entre si.
