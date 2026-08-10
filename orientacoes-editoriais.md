@@ -882,3 +882,11 @@ sendo reportada — isso mistura dias de antes e depois e esconde a tendência r
 série diária e mostrar a evolução dia a dia (crescendo/estabilizando/cedendo). Eventos de
 semanas anteriores continuam usando a comparação semanal padrão normalmente. Ver
 `SKILL.md` §"Evolução pós-evento" para o SQL e formato de apresentação.
+
+**"Atendimento não prestado" entra no volume, nunca no ranking qualitativo (Ago/2026):**
+esse motivo de contato representa interações sem serviço real prestado (majoritariamente
+fechamento por inatividade — ver `skill-bot-retention-scenarios.md` §1). Excluir sempre
+das listas de "Top motivos de contato" e "Top causas raiz" em qualquer report — nunca
+comentar como se fosse um tema qualitativo real. Nunca excluir do total de volume/contact
+rate — o ticket é real, só não teve serviço efetivamente prestado. Ver query com a
+exclusão em `skill-zendesk-cx.md` §"Top Motivos de Contato".
