@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "2.8"
+version: "2.9"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -342,6 +342,17 @@ longo desta conversa — recalibrar com o time se a realidade operacional diverg
 (ex: se Chargeback Recovery se mostrar mais sensível do que "Médio" sugere).
 
 ### Aumentos inesperados
+
+> ⚠️ **"Atendimento não prestado" nunca justifica um alerta isoladamente, mas conta no
+> volume.** Se o pico de uma vertical for concentrado nesse motivo específico (fechamento
+> por inatividade, sem serviço real prestado — ver `skill-bot-retention-scenarios.md`
+> §1), não gerar alerta baseado nisso, nem citá-lo como motivo no texto do alerta. O
+> volume desses tickets continua contando normalmente no total/baseline usado para
+> calcular o threshold — só não pode ser o motivo qualitativo apresentado como causa.
+> Se, ao investigar, o aumento de volume for **majoritariamente** esse motivo, tratar
+> como sinal de possível problema de UX/lentidão no bot (ver mesma skill), não como
+> aumento real de demanda — e sinalizar isso explicitamente na mensagem secundária de
+> evidência (Fase 5) em vez de apresentar como pico de contatos comum.
 
 | Critério | Threshold inicial proposto |
 |---|---|
