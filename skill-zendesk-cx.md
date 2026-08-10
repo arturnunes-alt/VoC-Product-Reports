@@ -175,8 +175,17 @@ GROUP BY date ORDER BY date;
 
 ### Top Motivos de Contato e Causa Raiz (via `agg_overview`)
 
+> ⚠️ **Correção Ago/2026 — "Atendimento não prestado" entra no volume, nunca no
+> ranking qualitativo.** Esse motivo de contato representa interações sem serviço real
+> prestado (predominantemente fechamento por inatividade — ver
+> `skill-bot-retention-scenarios.md` §1) — não há conteúdo substantivo para analisar ou
+> comentar. **Excluir sempre** das queries de ranking/top motivos abaixo (nunca aparece
+> como "top motivo" em nenhum report ou alerta), mas **nunca excluir** do total de
+> volume/contatos — o ticket é real e deve contar no denominador de qualquer cálculo de
+> volume, contact rate, ou comparação de baseline.
+
 ```sql
--- Top motivos de contato
+-- Top motivos de contato (excluir "Atendimento não prestado" do ranking qualitativo)
 SELECT reason_contact, SUM(ticket_count) AS total
 FROM prod.cx.agg_overview
 WHERE source = 'tickets'
@@ -184,10 +193,11 @@ WHERE source = 'tickets'
   AND vertical = '{VERTICAL}'
   AND date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
   AND reason_contact IS NOT NULL
+  AND reason_contact <> 'Atendimento não prestado'
 GROUP BY reason_contact
 ORDER BY total DESC LIMIT 10;
 
--- Top causas raiz
+-- Top causas raiz (mesma exclusão)
 SELECT root_cause, SUM(ticket_count) AS total
 FROM prod.cx.agg_overview
 WHERE source = 'tickets'
@@ -195,9 +205,26 @@ WHERE source = 'tickets'
   AND vertical = '{VERTICAL}'
   AND date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
   AND root_cause IS NOT NULL
+  AND root_cause <> 'Atendimento não prestado'
 GROUP BY root_cause
 ORDER BY total DESC LIMIT 10;
 ```
+
+**Volume total (nunca aplicar essa exclusão aqui):**
+```sql
+-- Volume geral — "Atendimento não prestado" permanece incluído
+SELECT SUM(ticket_count) AS total_contatos
+FROM prod.cx.agg_overview
+WHERE source = 'tickets'
+  AND (flg_human = true OR flg_retention_bot = true)
+  AND vertical = '{VERTICAL}'
+  AND date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}';
+```
+
+⚠️ Grafia exata não confirmada com acento/maiúscula — validar via `SELECT DISTINCT
+reason_contact FROM prod.cx.agg_overview WHERE reason_contact ILIKE '%atendimento%não%prestado%'`
+antes da primeira execução em produção, e ajustar a string exata nas duas queries acima
+se divergir.
 
 ---
 
