@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "2.9"
+version: "3.0"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -385,7 +385,7 @@ longo desta conversa — recalibrar com o time se a realidade operacional diverg
 | Queda no volume de contatos humanos (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **< 30%** do baseline (ou seja, queda de mais de 70%), E o baseline tinha volume mínimo de 15 contatos no mesmo recorte |
 | Queda no volume de acessos à Central de Ajuda (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **< 30%** do baseline, com o baseline tendo volume mínimo de 30 acessos |
 | Silêncio total onde historicamente há volume — **qualquer potencial** | **Zero** contatos ou acessos numa vertical/canal cujo baseline no mesmo recorte é **≥ 10** — sinal mais grave de queda, tratar com prioridade máxima independente da classificação de potencial |
-| Queda de retenção de bot (geral, não por vertical — ver nota de 1A-ii) — usar retenção **excluindo inatividade** (ver `skill-bot-retention-scenarios.md`), **qualquer potencial** | **< 15%** de retenção engajada na janela, com volume mínimo de 10 sessões de bot |
+| Queda de retenção de bot (geral, não por vertical — ver nota de 1A-ii) — usar fórmula oficial `bot_maker/(humano+bot_maker)` já líquida de `flg_passive_abandonment` (ver `skill-databricks-mcp.md` §12), **qualquer potencial** | **< 15%** de retenção na janela, com volume mínimo de 10 sessões de bot |
 | NPS Transacional (por produto, via planilha IndeCX) — **qualquer potencial** | **≤ 0 pts** na janela, com volume mínimo de 10 respostas — queda abrupta abaixo de zero é sinal forte, mais rígido que o threshold semanal (55 pts) por ser uma amostra pequena e intraday |
 | CSAT Atendimento N1 (geral, via planilha IndeCX) — **qualquer potencial** | **< 50%** de satisfeitos na janela, com volume mínimo de 10 respostas |
 
