@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "2.5"
+version: "2.7"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -61,6 +61,14 @@ que a instalação lá pode existir só parcialmente (`SKILL.md` sem a pasta `re
 Tentar `/mnt/skills/organization/{nome}/` primeiro; se não existir, tentar
 `/root/.claude/skills/{nome}/`; usar o que for encontrado.
 
+⚠️ **Nota relacionada, Ago/2026:** além da diferença de caminho entre ambientes acima,
+existe uma segunda causa possível para a mesma ausência de `references/` — inconsistência
+de montagem por sessão, mesmo dentro do mesmo ambiente/caminho (ver nota mais abaixo,
+"causa raiz revista"). Ou seja: mesmo tentando o caminho certo, uma sessão específica
+pode simplesmente não ter recebido o pacote completo daquela vez. As duas causas exigem
+o mesmo tratamento prático (fallback + notificação interna), então não é necessário
+distinguir qual delas ocorreu para agir — só registrar o que foi observado.
+
 - `cx-product-insights` (`SKILL.md` + `references/metrics.yml` + `references/support_tables.sql`)
   — **fonte primária para todo trabalho quantitativo de período fechado**: NPS, CSAT,
   volume de tickets, retenção de bot, rankings de motivo de contato e causa raiz. Usar
@@ -100,14 +108,42 @@ fonte real de `agg_overview`/NPS/CSAT/volume oficiais) — se especificamente es
 estiver ausente nos dois caminhos, aí sim é bloqueio legítimo, seguir a regra de
 validação inicial normalmente.
 
-**Sinalização obrigatória quando o fallback for usado:** incluir uma linha discreta no
-final da mensagem raiz de cada report afetado nesta execução:
+**⚠️ Correção Ago/2026 (v1) — sinalização deixou de ser pública, virou notificação interna:**
+a versão anterior desta regra pedia para incluir uma linha (`ℹ️ Exclusões/tags desta
+rodada calculadas via repositório interno...`) na mensagem raiz de cada report enviado
+às squads — isso gerou ruído real numa execução de produção (mensagem apareceu nos 20
+sets, sem nada que as squads pudessem fazer a respeito). Não é algo que o destinatário
+do report consegue agir sobre, então não deveria aparecer no report.
+
+**⚠️ Correção Ago/2026 (v2) — causa raiz revista: é intermitente por sessão, não uma
+pasta removida do pacote.** Diagnóstico inicial apontava para a pasta `references/` de
+`cx-orchestrator-reference` genuinamente ausente do pacote da skill. Teste direto
+revelou o contrário: **duas sessões de chat simultâneas, no mesmo produto
+(claude.ai), no mesmo momento** — uma teve acesso completo a `references/`, a outra
+não. Isso descarta "pacote incompleto" como causa e confirma **inconsistência de
+montagem de skill por sessão** — algumas sessões recebem o pacote completo, outras só
+o `SKILL.md`, de forma aparentemente não determinística. Ainda não está claro se isso
+afeta as execuções da Routine da mesma forma (cada execução é uma sessão nova), mas dado
+o padrão observado, é razoável assumir que sim.
+
+**Nova regra:** quando o fallback for usado em qualquer report desta execução, **não**
+incluir nenhuma linha sobre isso nos reports enviados às squads. Em vez disso, registrar
+via o mecanismo de notificação interna da própria Routine (o mesmo usado quando a Fase 0
+bloqueia por completo) uma mensagem resumida ao final da execução, dirigida ao dono do
+processo, não aos canais de Slack:
 ```
-ℹ️ Exclusões/tags desta rodada calculadas via repositório interno — skill organizacional
-indisponível neste ambiente. Podem estar menos atualizadas que a fonte oficial.
+ℹ️ [Interno, não enviar ao Slack] Nesta execução, os seguintes reports usaram fallback
+do repositório em vez da skill organizacional: {lista de skills ausentes + reports
+afetados}. Causa provável: inconsistência de montagem de skill por sessão (confirmado
+que a mesma skill esteve completa em outra sessão simultânea) — não necessariamente um
+problema de pacote. Rodar "Run now" de novo pode resolver por si só, já que cada
+execução é uma sessão nova. Se o padrão persistir em várias execuções seguidas, aí sim
+vale reportar a quem administra o provisionamento de skills (ver maintainer no
+cabeçalho de cx-orchestrator-reference/SKILL.md).
 ```
-Não omitir essa sinalização silenciosamente — quem lê o report precisa saber que os
-números desta rodada específica usaram a fonte de fallback, não a oficial.
+Isso preserva a transparência (o dono do processo sabe e pode agir) sem colocar um aviso
+de infraestrutura interna num canal onde ninguém tem como fazer nada com ele, e sem
+prescrever uma escalada para admin que pode nem ser o problema real.
 
 **Skills organizacionais que NÃO se aplicam a esta Routine** (não invocar):
 `cx-realtime-overview`, `cx-realtime-insights`, `cx-realtime-vertical-analysis` — são
@@ -969,7 +1005,7 @@ Ao citar conteúdo de tickets: omitir CPF, telefone, e-mail e dados bancários.
 Antes de encerrar a Routine, verificar:
 - [ ] `MODO` identificado corretamente (RASCUNHO ou VALIDACAO) a partir do prompt recebido
 - [ ] Fase 0 Passo 0 (resolução de skills organizacionais) executado — tentados os 2 caminhos antes de qualquer fallback
-- [ ] Se fallback usado: sinalização "ℹ️ Exclusões/tags calculadas via repositório interno" incluída nos reports afetados
+- [ ] Se fallback usado: **nenhuma** menção pública nos reports enviados às squads — notificação interna resumida enviada ao dono do processo, listando skills ausentes e causa raiz
 - [ ] Fase 0 (orientações editoriais) lida ou registrada como ⚠️
 - [ ] Fase 1 (Tabela de Eventos e Incidentes — 10 canais, 14 dias) construída ou registrada como ⚠️
 - [ ] Correlação cruzada aplicada — eventos de outras squads checados em cada report, não só os do próprio canal
