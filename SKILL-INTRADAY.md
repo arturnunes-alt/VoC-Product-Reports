@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "2.7"
+version: "2.8"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -285,7 +285,8 @@ tags:bug [mesmos filtros de exclusão acima]
 ```
 
 **Fallback via Databricks — apenas na execução das 10h:** `prod.cx.agg_overview`
-`source='bugs'` (CX-013) cobre o dia anterior completo. Mesma regra das demais fontes T-1
+`source='bugs'`, coluna `bug_count` (CX-013, confirmado via `metrics.yml` oficial de
+`cx-product-insights`) cobre o dia anterior completo. Mesma regra das demais fontes T-1
 desta Routine — só útil na janela das 10h, que abrange boa parte do dia anterior.
 
 Se a busca por bugs falhar ou a tag não puder ser confirmada: registrar ⚠️ e prosseguir
