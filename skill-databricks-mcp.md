@@ -19,38 +19,54 @@ informações que não existem nos tickets em si.
 
 ### 1. `prod.cx.fat_indecx_metrics` — NPS e CSAT (IndeCX)
 
-Principal fonte de pesquisas de satisfação.
+> ⚠️ **Correção Ago/2026 — estrutura anterior estava incorreta.** A versão anterior
+> desta seção descrevia um campo `metric` com valores `csat-1-5`/`nps-0-10` — isso não
+> existe nesta tabela. A estrutura real, confirmada via `support_tables.sql` oficial de
+> `cx-product-insights`, usa `review_class`/`survey_type`/`quest_level`/`action_name`.
+> Qualquer query anterior baseada em `metric = 'csat-1-5'` está quebrada.
+
+Fonte de pesquisas de satisfação a nível de respondente individual (mais granular que
+`agg_overview`, que já vem agregado).
 
 | Campo | Descrição |
 |---|---|
-| `id_ticket` | ID do ticket Zendesk associado |
+| `user_id` | ID do usuário respondente |
 | `review` | Nota dada pelo cliente |
-| `feedback` | Comentário aberto do cliente |
-| `metric` | Tipo da pesquisa (ver métricas abaixo) |
+| `review_class` | Classificação da nota — **valores em português:** `promotor`, `neutro`, `detrator` |
+| `survey_type` | Tipo de pesquisa — ex: `transacional` |
+| `quest_level` | Nível da pergunta — usar `main` para a pergunta principal (NPS/CSAT), distinto de perguntas secundárias da mesma pesquisa |
+| `action_name` | Nome da ação/pesquisa — **a vertical fica embutida aqui**, não em um campo `vertical` separado |
 | `answer_date` | Data da resposta |
+| `deleted` | Filtrar sempre `deleted = false` |
 
-**Métricas disponíveis (`metric`):**
-
-| Valor | Uso |
-|---|---|
-| `csat-1-5` | CSAT escala 1–5 (atendimento) |
-| `nps-0-10` | NPS Transacional escala 0–10 |
-
-> ⚠️ Não misturar métricas na mesma query. Para CSAT use `metric = 'csat-1-5'`.
-> Para NPS Transacional por produto, use `metric = 'nps-0-10'`.
-> Os filtros de período e vertical devem ser aplicados via JOIN com `dim_zendesk_tickets_summary`.
-
-**Padrão para deduplicação (usar sempre):**
+**Antes de qualquer query, confirmar o `action_name` exato:**
 ```sql
-SELECT 
-    id_ticket,
-    review AS nota,
-    feedback,
-    ROW_NUMBER() OVER (PARTITION BY id_ticket ORDER BY answer_date DESC) AS rn
-FROM `prod`.`cx`.`fat_indecx_metrics`
-WHERE metric = 'csat-1-5'  -- ou 'nps-0-10'
+SELECT DISTINCT action_name FROM prod.cx.fat_indecx_metrics
+WHERE survey_type = 'transacional' AND action_name ILIKE '%{termo}%'
 ```
-Filtrar sempre por `rn = 1` para pegar apenas a resposta mais recente por ticket.
+
+**Query padrão — NPS Transacional por produto:**
+```sql
+SELECT
+  COUNT(CASE WHEN review_class = 'promotor' THEN 1 END) AS promotores,
+  COUNT(CASE WHEN review_class = 'neutro'   THEN 1 END) AS neutros,
+  COUNT(CASE WHEN review_class = 'detrator' THEN 1 END) AS detratores,
+  COUNT(*) AS total_respondentes,
+  ROUND(
+    (COUNT(CASE WHEN review_class = 'promotor' THEN 1 END)
+     - COUNT(CASE WHEN review_class = 'detrator' THEN 1 END))
+    / NULLIF(COUNT(*), 0) * 100, 1
+  ) AS nps_tx
+FROM prod.cx.fat_indecx_metrics
+WHERE survey_type = 'transacional'
+  AND quest_level = 'main'
+  AND action_name = '{confirmar via query acima}'
+  AND answer_date BETWEEN '{inicio}' AND '{fim}'
+  AND deleted = false
+```
+
+Para CSAT ou NPS Relacional: mesma estrutura, trocando `survey_type`/`action_name` pelo
+valor correto (confirmar sempre via `SELECT DISTINCT` antes, nunca presumir o nome).
 
 ---
 
@@ -131,18 +147,127 @@ LEFT JOIN `prod`.`cx`.`fat_tickets_transcription_summary` AS s
 
 ---
 
-### 4. `prod.cx.fat_tickets_transcription` — Transcrição completa
+### 4. `prod.cx.fat_tickets_transcription` — Transcrição completa (bruta)
 
-Texto integral da transcrição do atendimento (quando disponível).
+> ⚠️ **Correção Ago/2026:** nomes de campo específicos (`ticket_transcription`,
+> `timestamp_created_at_br`) não são confirmados pela fonte oficial — a query de
+> referência oficial usa `SELECT *`, sem listar colunas específicas. Não presumir nomes
+> de campo; usar `SELECT *` na primeira consulta e confirmar estrutura real antes de
+> filtrar por coluna específica.
+
+Texto integral e bruto da transcrição do atendimento — distinta de
+`fat_tickets_transcription_summary` (resumo já processado por IA, seção 3). Usar esta
+quando o pedido exigir fidelidade literal à "voz do cliente", não um resumo.
+
+**Cobertura:** a partir de maio/2026 (mesma limitação da `_summary`).
+
+```sql
+SELECT * FROM prod.cx.fat_tickets_transcription WHERE id_ticket = '{id_ticket}'
+```
+
+**Amostra por vertical/tema (via JOIN com `dim_zendesk_tickets_summary` para filtrar
+data e vertical, já que a transcrição em si não tem esses campos confirmados):**
+```sql
+SELECT t.*
+FROM prod.cx.fat_tickets_transcription t
+JOIN prod.cx.dim_zendesk_tickets_summary d ON CAST(d.id_ticket AS STRING) = t.id_ticket
+WHERE d.vertical = '{vertical com acentuação}'
+  AND d.created_at_br BETWEEN '{inicio}' AND '{fim}'
+  AND (d.flg_human = true OR d.flg_retention_bot = true)
+  AND d.flg_invalid_bot = false
+```
+> Usar com filtro de data específico para não sobrecarregar a query.
+
+---
+
+### 4B. `prod.cx.fat_ticket_time` — Tempos por evento de atendimento
+
+Analítico de tempos — base para TMR/TMO granular por ticket (os agregados oficiais são
+CX-014/CX-015 via `cx-product-insights`, ver `SKILL.md`; usar esta tabela só para
+investigação granular por ticket específico).
 
 | Campo | Descrição |
 |---|---|
 | `id_ticket` | Chave de join |
-| `ticket_transcription` | Transcrição completa do atendimento |
-| `timestamp_created_at_br` | Data/hora da transcrição em BRT |
+| `action` | `occupation`, `resolution` ou `first_reply_time` |
+| `duration` | Duração em segundos |
+| `date_reference_br` | Data do **evento** (BRT) |
+| `updater_email` | Quem registrou o evento |
 
-> Usar com filtro de data específico para não sobrecarregar a query.
-> Para análise qualitativa pontual (ex: leitura de casos críticos de um dia).
+> ⚠️ **`date_reference_br` é a data do evento, não da criação do ticket.** Sempre
+> filtrar por `date_reference_br` para métricas de tempo — usar `created_at_br` aqui
+> fecha o período errado (um ticket criado num dia pode ter eventos de resolução dias
+> depois).
+
+```sql
+SELECT * FROM prod.cx.fat_ticket_time
+WHERE id_ticket = '{id_ticket}' AND action = 'occupation'  -- ou 'resolution', 'first_reply_time'
+```
+
+**Investigar quais tickets estão por trás de um TMO/TMR agregado alto:**
+```sql
+SELECT
+  t.id_ticket,
+  SUM(t.duration) AS duration_total_sec,
+  COUNT(*) AS qtd_eventos,
+  d.reason_contact, d.root_cause, d.friendly_service_channel, d.created_at_br
+FROM prod.cx.fat_ticket_time t
+JOIN prod.cx.dim_zendesk_tickets_summary d ON CAST(d.id_ticket AS STRING) = t.id_ticket
+WHERE d.vertical = '{vertical com acentuação}'
+  AND t.action = 'occupation'
+  AND t.date_reference_br BETWEEN '{inicio}' AND '{fim}'
+  AND (d.flg_human = true OR d.flg_retention_bot = true)
+  AND d.flg_invalid_bot = false
+  AND d.friendly_service_channel != 'derivacao'
+GROUP BY t.id_ticket, d.reason_contact, d.root_cause, d.friendly_service_channel, d.created_at_br
+ORDER BY duration_total_sec DESC
+```
+
+---
+
+### 4C. `prod.cx.amplitude_datamart` — Dispositivo por usuário
+
+Dispositivo/sistema operacional mais recente por usuário — **não existe em nenhuma
+tabela de ticket** (`reason_contact`, `root_cause`, `entry_reason` não capturam
+iOS/Android). Usar sempre esta tabela quando o pedido envolver análise por dispositivo.
+
+| Campo | Descrição |
+|---|---|
+| `userid` | ID do usuário |
+| `platform` | `iOS`, `Android`, `Web app`, `Other`, `Sms` |
+| `event_time_br` | Timestamp do evento — usar para pegar o dispositivo mais recente |
+
+```sql
+SELECT userid, platform
+FROM (
+  SELECT userid, platform,
+         ROW_NUMBER() OVER (PARTITION BY userid ORDER BY event_time_br DESC) AS rn
+  FROM prod.cx.amplitude_datamart
+  WHERE userid IS NOT NULL
+) WHERE rn = 1
+```
+
+**Cruzar com tickets por dispositivo:**
+```sql
+WITH dispositivo AS (
+  SELECT userid, platform FROM (
+    SELECT userid, platform,
+           ROW_NUMBER() OVER (PARTITION BY userid ORDER BY event_time_br DESC) AS rn
+    FROM prod.cx.amplitude_datamart WHERE userid IS NOT NULL
+  ) WHERE rn = 1
+)
+SELECT d.reason_contact, d.root_cause, amp.platform, COUNT(DISTINCT d.id_ticket) AS tickets
+FROM prod.cx.dim_zendesk_tickets_summary d
+JOIN dispositivo amp ON d.userid = amp.userid
+WHERE d.vertical = '{vertical com acentuação}'
+  AND d.created_at_br BETWEEN '{inicio}' AND '{fim}'
+  AND (d.flg_human = true OR d.flg_retention_bot = true)
+  AND d.flg_invalid_bot = false
+  AND d.friendly_service_channel != 'derivacao'
+  AND amp.platform = 'iOS'  -- ou 'Android'
+GROUP BY d.reason_contact, d.root_cause, amp.platform
+ORDER BY tickets DESC
+```
 
 ---
 
@@ -269,12 +394,13 @@ GROUP BY userid
 ```sql
 WITH ranked_metrics AS (
     SELECT 
-        id_ticket,
+        user_id,
         review AS nota_csat,
-        feedback,
-        ROW_NUMBER() OVER (PARTITION BY id_ticket ORDER BY answer_date DESC) AS rn
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY answer_date DESC) AS rn
     FROM `prod`.`cx`.`fat_indecx_metrics`
-    WHERE metric = 'csat-1-5'
+    WHERE survey_type = '{confirmar via SELECT DISTINCT — ver §1}'
+      AND quest_level = 'main'
+      AND deleted = false
 )
 SELECT
     t.vertical,
@@ -286,7 +412,7 @@ SELECT
     ROUND(100.0 * SUM(CASE WHEN m.nota_csat <= 2 THEN 1 ELSE 0 END)
           / NULLIF(COUNT(m.nota_csat), 0), 1)            AS pct_insatisfeitos
 FROM `prod`.`cx`.`dim_zendesk_tickets_summary` t
-LEFT JOIN ranked_metrics m ON t.id_ticket = m.id_ticket AND m.rn = 1
+LEFT JOIN ranked_metrics m ON CAST(t.userid AS STRING) = CAST(m.user_id AS STRING) AND m.rn = 1
 WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
   AND t.flg_human = true
   AND t.flg_invalid_bot = false
@@ -295,6 +421,11 @@ WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
 GROUP BY t.vertical
 ORDER BY total_tickets DESC;
 ```
+> ⚠️ Join por `user_id`/`userid`, não `id_ticket` — `fat_indecx_metrics` não tem coluna
+> `id_ticket` (confirmado via `support_tables.sql` oficial). Isso significa que o join
+> associa a pesquisa ao **usuário**, não a um ticket específico — se o mesmo usuário
+> tiver vários tickets no período, o LEFT JOIN pode duplicar linhas. Agrupar com cautela
+> ou usar `COUNT(DISTINCT t.id_ticket)` como já está na query acima.
 
 ---
 
@@ -303,12 +434,14 @@ ORDER BY total_tickets DESC;
 ```sql
 WITH ranked_nps AS (
     SELECT 
-        id_ticket,
+        user_id,
         review AS nota_nps,
-        feedback,
-        ROW_NUMBER() OVER (PARTITION BY id_ticket ORDER BY answer_date DESC) AS rn
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY answer_date DESC) AS rn
     FROM `prod`.`cx`.`fat_indecx_metrics`
-    WHERE metric = 'nps-0-10'
+    WHERE survey_type = 'transacional'
+      AND quest_level = 'main'
+      AND action_name = '{confirmar via SELECT DISTINCT — ver §1}'
+      AND deleted = false
 ),
 nps_calc AS (
     SELECT
@@ -319,7 +452,7 @@ nps_calc AS (
         ROUND(100.0 * SUM(CASE WHEN n.nota_nps <= 6 THEN 1 ELSE 0 END)
               / NULLIF(COUNT(n.nota_nps), 0), 1) AS pct_detratores
     FROM `prod`.`cx`.`dim_zendesk_tickets_summary` t
-    INNER JOIN ranked_nps n ON t.id_ticket = n.id_ticket AND n.rn = 1
+    INNER JOIN ranked_nps n ON CAST(t.userid AS STRING) = CAST(n.user_id AS STRING) AND n.rn = 1
     WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
       AND t.flg_human = true
       AND t.flg_invalid_bot = false
@@ -336,6 +469,9 @@ SELECT
 FROM nps_calc
 ORDER BY nps_score DESC;
 ```
+> ⚠️ Preferir a métrica oficial CX-001 (via `cx-product-insights`/`agg_overview`) para o
+> número headline do report — esta query é útil para investigação granular por
+> vertical/ticket, mas `agg_overview` é a fonte de verdade para o valor final.
 
 ---
 
@@ -348,14 +484,16 @@ fora de análises pontuais (alto custo de processamento).
 ```sql
 WITH ranked_metrics AS (
     SELECT 
-        id_ticket, review AS nota_csat, feedback,
-        ROW_NUMBER() OVER (PARTITION BY id_ticket ORDER BY answer_date DESC) AS rn
+        user_id, review AS nota_csat,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY answer_date DESC) AS rn
     FROM `prod`.`cx`.`fat_indecx_metrics`
-    WHERE metric = 'csat-1-5'
+    WHERE survey_type = '{confirmar via SELECT DISTINCT — ver §1}'
+      AND quest_level = 'main'
+      AND deleted = false
 ),
 card_info AS (
     SELECT user_id, tipo_cartao FROM (
-        SELECT user_id,
+        SELECT user_id,  -- ou account_id -- confirmar via preview, ver §5
             CASE
                 WHEN provider_program_id = 1362 THEN 'Standard'
                 WHEN provider_program_id = 1271 THEN 'Gold'
@@ -367,7 +505,8 @@ card_info AS (
                 ELSE '00. ERRO'
             END AS tipo_cartao,
             ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_date DESC) AS rn_card
-        FROM `prod`.`rwd`.`cc_recargapay_card_account`
+        FROM `prod`.`credit_card`.`dim_card_account`
+        -- ⚠️ prod.rwd.cc_recargapay_card_account está bloqueada pela governança — ver §5
     ) WHERE rn_card = 1
 )
 SELECT
@@ -375,7 +514,7 @@ SELECT
     DATE(t.created_at_br)                              AS created_at,
     DATE(DATE_TRUNC('week', DATE(t.created_at_br)))    AS start_of_week,
     t.month,
-    t.key_channel,
+    t.friendly_service_channel,
     t.vertical,
     t.reason_contact,
     t.root_cause,
@@ -384,7 +523,6 @@ SELECT
     t.entry_reason,
     t.entry_subreason,
     m.nota_csat,
-    m.feedback,
     c.tipo_cartao,
     CASE 
         WHEN c.tipo_cartao LIKE '%Standard%' OR c.tipo_cartao LIKE '%Gold%'
@@ -396,8 +534,7 @@ SELECT
         ELSE '-'
     END AS card_type,
     CASE 
-        WHEN REGEXP_LIKE(LOWER(t.key_channel),
-            'bacen|consumidor\.gov|procon|jec|ouvidoria|reclame|ofício')
+        WHEN t.friendly_service_channel IN ('special cases', 'ouvidoria', 'social media', 'stores', 'canais especiais')
         THEN 'Sim' ELSE 'Não'
     END AS canal_critico,
     s.customer_issue,
@@ -408,7 +545,7 @@ SELECT
     s.improvement_suggestion
 FROM `prod`.`cx`.`dim_zendesk_tickets_summary` AS t
 LEFT JOIN ranked_metrics AS m
-    ON t.id_ticket = m.id_ticket AND m.rn = 1
+    ON CAST(t.userid AS STRING) = CAST(m.user_id AS STRING) AND m.rn = 1
 LEFT JOIN card_info AS c
     ON CAST(t.userid AS STRING) = CAST(c.user_id AS STRING)
 LEFT JOIN `prod`.`cx`.`fat_tickets_transcription_summary` AS s
@@ -420,6 +557,12 @@ WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
   AND t.friendly_service_channel <> 'derivacao'
 ORDER BY created_at ASC;
 ```
+> ⚠️ Três correções aplicadas aqui: (1) `fat_indecx_metrics` usa `user_id`, não
+> `id_ticket`, e o filtro correto é `survey_type`/`quest_level`, não `metric` (ver §1);
+> (2) `key_channel` não é campo confirmado desta tabela — usar `friendly_service_channel`
+> (ver §2); (3) a tabela de cartão trocou de `rwd.cc_recargapay_card_account` (bloqueada)
+> para `credit_card.dim_card_account` (ver §5) — nome de coluna ainda não confirmado
+> formalmente, só validado como funcional.
 
 ---
 
@@ -682,11 +825,13 @@ ORDER BY semana;
 ```sql
 WITH csat_bot AS (
     SELECT
-        id_ticket,
+        user_id,
         review AS nota_csat,
-        ROW_NUMBER() OVER (PARTITION BY id_ticket ORDER BY answer_date DESC) AS rn
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY answer_date DESC) AS rn
     FROM `prod`.`cx`.`fat_indecx_metrics`
-    WHERE metric = 'csat-1-5'
+    WHERE survey_type = '{confirmar via SELECT DISTINCT — ver §1}'
+      AND quest_level = 'main'
+      AND deleted = false
 )
 SELECT
     DATE(DATE_TRUNC('week', DATE(t.created_at_br))) AS semana,
@@ -696,12 +841,15 @@ SELECT
     ROUND(100.0 * SUM(CASE WHEN c.nota_csat <= 2 THEN 1 ELSE 0 END)
           / NULLIF(COUNT(c.nota_csat), 0), 1)       AS pct_insatisfeitos
 FROM `prod`.`cx`.`dim_zendesk_tickets_summary` t
-LEFT JOIN csat_bot c ON t.id_ticket = c.id_ticket AND c.rn = 1
+LEFT JOIN csat_bot c ON CAST(t.userid AS STRING) = CAST(c.user_id AS STRING) AND c.rn = 1
 WHERE t.flg_retention_bot = true
   AND DATE(t.created_at_br) BETWEEN '{DATA_INICIO_SERIE}' AND '{DATA_FIM}'
 GROUP BY semana
 ORDER BY semana;
 ```
+> ⚠️ Preferir `agg_botmaker_metrics` (CSAT do bot = `csat_promoter/csat_answered`, ver
+> `skill-databricks-mcp.md` §12) como fonte oficial de CSAT do RecargaBot — esta query
+> via `fat_indecx_metrics` é alternativa granular, não a fonte primária.
 
 ### Volume Special Cases N2 por canal e semana
 
@@ -749,10 +897,13 @@ SELECT
 FROM `prod`.`cx`.`dim_zendesk_tickets_summary` t
 LEFT JOIN investimentos i ON CAST(t.userid AS STRING) = CAST(i.userid AS STRING)
 LEFT JOIN (
-    SELECT id_ticket, review,
-           ROW_NUMBER() OVER (PARTITION BY id_ticket ORDER BY answer_date DESC) AS rn
-    FROM `prod`.`cx`.`fat_indecx_metrics` WHERE metric = 'csat-1-5'
-) m ON t.id_ticket = m.id_ticket AND m.rn = 1
+    SELECT user_id, review,
+           ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY answer_date DESC) AS rn
+    FROM `prod`.`cx`.`fat_indecx_metrics`
+    WHERE survey_type = '{confirmar via SELECT DISTINCT — ver §1}'
+      AND quest_level = 'main'
+      AND deleted = false
+) m ON CAST(t.userid AS STRING) = CAST(m.user_id AS STRING) AND m.rn = 1
 WHERE DATE(t.created_at_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
   AND t.flg_human = true
   AND t.flg_invalid_bot = false
