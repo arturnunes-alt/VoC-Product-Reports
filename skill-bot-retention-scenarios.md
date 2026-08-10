@@ -23,6 +23,14 @@ Retenção "por abandono" = tickets retencao_chatbot COM retencao_inatividade_bo
 ```
 Apresentar os dois separadamente quando possível — nunca só o agregado.
 
+**Conexão com o motivo de contato "Atendimento não prestado" (Ago/2026):** essa
+inatividade se manifesta, no campo `reason_contact`/`root_cause`, como o valor
+"Atendimento não prestado" (visto na amostra de ticket junto com
+`atendimento_não_prestado_causa_raiz_não_identificada`). Por definição, esse valor não
+tem conteúdo qualitativo real para analisar — regra em `skill-zendesk-cx.md` §"Top
+Motivos de Contato": excluir sempre do ranking/comentário qualitativo, mas manter no
+total de volume (o ticket é real, só não teve serviço efetivamente prestado).
+
 Esta mesma distinção já existe no lado Databricks via `agg_botmaker_metrics.flg_retention_inactivity`
 (ver `skill-databricks-mcp.md` §12) — os dois achados se confirmam mutuamente.
 
