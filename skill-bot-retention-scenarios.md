@@ -12,24 +12,36 @@ tickets marcados como "retidos pelo bot" têm também a tag `retencao_inatividad
 conversa (o cliente simplesmente parou de responder e o bot encerrou por inatividade).
 
 **Implicação prática:** nunca reportar "% de retenção do bot" usando o volume bruto de
-`retencao_chatbot` sem separar inatividade. Um número de retenção "alto" pode
+`retencao_chatbot` sem tratar inatividade. Um número de retenção "alto" pode
 simplesmente significar que muita gente desistiu de conversar com o bot, não que o bot
 resolveu o problema.
 
-**Regra obrigatória em todo report (semanal ou intraday) que mencionar retenção de bot:**
+> ⚠️ **Correção Ago/2026 — regra de tratamento ajustada para bater com a fonte oficial.**
+> A instrução original abaixo pedia calcular e apresentar "engajada" e "por abandono"
+> separadamente. A query oficial do Dashboard Arturito #103 (`sss_daily`, ver
+> `skill-databricks-mcp.md` §12) trata isso de forma diferente e mais simples: **exclui**
+> tickets com `flg_passive_abandonment = 1` (ticket-level, via `fat_botmaker_metrics`)
+> diretamente na cláusula WHERE, antes de qualquer contagem — não calcula os dois números
+> para depois decidir o que mostrar. Adotar esse padrão como principal a partir de agora:
+
 ```
-Retenção "engajada" (exclui inatividade) = tickets retencao_chatbot SEM retencao_inatividade_botmaker
-Retenção "por abandono" = tickets retencao_chatbot COM retencao_inatividade_botmaker
+Retenção reportada = bot_maker / (humano + bot_maker), já excluindo flg_passive_abandonment=1
 ```
-Apresentar os dois separadamente quando possível — nunca só o agregado.
+
+Calcular "retenção por abandono" separadamente continua válido como **métrica de
+diagnóstico** (ex: para investigar se um estágio específico tem problema de UX gerando
+abandono alto), mas não é mais o formato padrão para o número reportado em alertas ou
+reports — esse agora é sempre líquido de abandono passivo, seguindo a query oficial.
 
 **Conexão com o motivo de contato "Atendimento não prestado" (Ago/2026):** essa
 inatividade se manifesta, no campo `reason_contact`/`root_cause`, como o valor
 "Atendimento não prestado" (visto na amostra de ticket junto com
-`atendimento_não_prestado_causa_raiz_não_identificada`). Por definição, esse valor não
-tem conteúdo qualitativo real para analisar — regra em `skill-zendesk-cx.md` §"Top
-Motivos de Contato": excluir sempre do ranking/comentário qualitativo, mas manter no
-total de volume (o ticket é real, só não teve serviço efetivamente prestado).
+`atendimento_não_prestado_causa_raiz_não_identificada`) — mesmo fenômeno que
+`flg_passive_abandonment`/`retencao_inatividade_botmaker` capturam em tabelas diferentes.
+Por definição, esse valor não tem conteúdo qualitativo real para analisar — regra em
+`skill-zendesk-cx.md` §"Top Motivos de Contato": excluir sempre do ranking/comentário
+qualitativo, mas manter no total de volume (o ticket é real, só não teve serviço
+efetivamente prestado).
 
 Esta mesma distinção já existe no lado Databricks via `agg_botmaker_metrics.flg_retention_inactivity`
 (ver `skill-databricks-mcp.md` §12) — os dois achados se confirmam mutuamente.
