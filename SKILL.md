@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "2.8"
+version: "2.9"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -720,14 +720,24 @@ com `channel_class4` — a distribuição desta Routine é intencionalmente dife
 Tickets com `friendly_service_channel = 'derivacao'` são sempre excluídos de todos os
 grupos (side conversations).
 
-### Retenção de Bot — fonte dedicada (não usar CX-005 de cx-product-insights)
+### Retenção de Bot — fonte dedicada e fórmula corrigida (não usar CX-005 de cx-product-insights)
 
-**O volume** de contatos do RecargaBot (para a Distribuição de Volume acima) continua
-vindo de `agg_overview` (`flg_retention_bot = true`, `ticket_count`).
+> ⚠️ **Correção Ago/2026:** a Distribuição de Volume de Atendimento (N1 Humano/Bot/
+> Automação) e a retenção de bot passaram a usar a query oficial `sss_daily` do
+> Dashboard Arturito #103 ("Bot & IA Agent") como fonte de verdade — ver
+> `skill-databricks-mcp.md` §12 para a query completa e a fórmula corrigida. Principais
+> mudanças: (1) retenção já vem líquida de abandono passivo desde a query, não é mais
+> calculada separadamente "engajada vs abandono"; (2) `flg_invalid_bot` conta como bot
+> para esse cálculo específico; (3) existe uma categoria separada `bot_social` (canal
+> social media) além do bot de chat online.
+
+**O volume geral** de contatos do RecargaBot pode continuar sendo lido via `agg_overview`
+(`flg_retention_bot = true`, `ticket_count`) para contexto rápido, mas **a Distribuição de
+Volume de Atendimento oficial desta Routine usa a query `sss_daily`** (§12), que já separa
+Humano/Bot(chat)/Bot(social)/Automação corretamente por canal.
 
 **O percentual de retenção, CSAT do bot e detalhamento por estágio** usam
-`prod.cx.agg_botmaker_metrics` — tabela já agregada com granularidade de sessão de bot,
-mais rica que qualquer cálculo feito a partir de `agg_overview`.
+`prod.cx.agg_botmaker_metrics` — tabela agregada com granularidade de sessão de bot.
 
 **Colunas principais:**
 
@@ -737,12 +747,11 @@ mais rica que qualquer cálculo feito a partir de `agg_overview`.
 | `attended_by_bot` | Sessões efetivamente atendidas pelo bot |
 | `retained_by_bot` | Sessões retidas sem transbordo — numerador da retenção |
 | `overflow` | Transbordo intencional para humano |
-| `passive_abandonment` / `active_abandonment` | Cliente abandonou a sessão (passiva = inatividade, ativa = saiu voluntariamente) |
+| `passive_abandonment` / `active_abandonment` | Cliente abandonou a sessão (passiva = inatividade, ativa = saiu voluntariamente) — usar como diagnóstico, não como componente do cálculo de retenção reportado (já excluído na query oficial) |
 | `csat_promoter` / `csat_answered` | CSAT do bot: `csat_promoter / csat_answered` |
-| `fcr_bot_stage_count` | Resolução no primeiro contato, por estágio |
-| `stage` | Estágio/etapa do fluxo — usar para "Top temas de não-retenção" |
+| `fcr_bot_stage_count` / `fcr_bot_count` | Resolução no primeiro contato, por estágio ou por usuário |
+| `stage` / `entry_theme` / `conversation_theme` | Três dimensões de tema distintas — usar para "Top temas de não-retenção" |
 | `flg_hyperpersonalized` / `flg_generative` / `flg_static` | Classificam o tipo de fluxo: Hiper / Generativo / Estático / Outro |
-| `flg_retention_inactivity` | Separa retenção por inatividade (falso encerramento) da retenção real |
 | `resolution_seconds_sum/count`, `time_bot_seconds_sum/count`, `time_user_seconds_sum/count` | Tempos de resolução e de interação |
 | `not_understood_count_sum`, `session_pct_not_understood_sum/count` | Sinal de qualidade do entendimento do bot |
 
