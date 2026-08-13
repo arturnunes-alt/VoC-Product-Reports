@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "3.0"
+version: "3.1"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -380,14 +380,23 @@ longo desta conversa — recalibrar com o time se a realidade operacional diverg
 > abrupta sem explicação de negócio (feriado, horário de baixo movimento já esperado)
 > merece a mesma atenção que um pico.
 
+> ⚠️ **Correção Ago/2026 — queda de volume deixou de ser critério de alerta.** Redução
+> no volume de contatos humanos e de acessos à Central de Ajuda **não** justifica mais
+> alerta por si só — queda de volume, isoladamente, pode ser sinal positivo (autoatendimento
+> funcionando, problema resolvido), não necessariamente negativo. Removidos os critérios
+> de queda de volume de contatos e de Central de Ajuda. **CSAT Atendimento N1 também foi
+> removido** deste critério — mantido só NPS Transacional (pesquisa), por instrução
+> explícita de reduzir o escopo a pesquisas. Permanecem como critério de queda: **Silêncio
+> total** (categoricamente diferente de "redução" — zero absoluto onde sempre há volume é
+> sinal de canal quebrado, não de melhora), **Queda de retenção de bot** (métrica de
+> qualidade/taxa, não de volume bruto — mantida por analogia a NPS/CSAT; remover também se
+> não for essa a intenção) e **NPS Transacional**.
+
 | Critério | Threshold inicial proposto |
 |---|---|
-| Queda no volume de contatos humanos (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **< 30%** do baseline (ou seja, queda de mais de 70%), E o baseline tinha volume mínimo de 15 contatos no mesmo recorte |
-| Queda no volume de acessos à Central de Ajuda (por vertical, **Alto potencial apenas**) vs. baseline mesmo recorte | **< 30%** do baseline, com o baseline tendo volume mínimo de 30 acessos |
 | Silêncio total onde historicamente há volume — **qualquer potencial** | **Zero** contatos ou acessos numa vertical/canal cujo baseline no mesmo recorte é **≥ 10** — sinal mais grave de queda, tratar com prioridade máxima independente da classificação de potencial |
 | Queda de retenção de bot (geral, não por vertical — ver nota de 1A-ii) — usar fórmula oficial `bot_maker/(humano+bot_maker)` já líquida de `flg_passive_abandonment` (ver `skill-databricks-mcp.md` §12), **qualquer potencial** | **< 15%** de retenção na janela, com volume mínimo de 10 sessões de bot |
 | NPS Transacional (por produto, via planilha IndeCX) — **qualquer potencial** | **≤ 0 pts** na janela, com volume mínimo de 10 respostas — queda abrupta abaixo de zero é sinal forte, mais rígido que o threshold semanal (55 pts) por ser uma amostra pequena e intraday |
-| CSAT Atendimento N1 (geral, via planilha IndeCX) — **qualquer potencial** | **< 50%** de satisfeitos na janela, com volume mínimo de 10 respostas |
 
 **⚠️ Estes thresholds são um ponto de partida, não um valor definitivo.** Vão precisar
 de calibração nas primeiras semanas — thresholds muito baixos geram ruído (mina a
@@ -472,7 +481,17 @@ nunca para as 18 de uma vez. Antes de considerar qualquer candidato como alerta 
 verificar se ele **já** está sinalizado em algum canal estratégico, na janela desta
 execução (Fase 0):
 
-**Canais estratégicos a checar, por candidato:**
+**Canais estratégicos a checar, por candidato — todos, sempre, inclusive candidatos
+reativos (pico/queda), não só os que já vieram do gatilho preventivo:**
+- **`#escalation_incidents`** (ID: `CCP2AGBV1`) — ⚠️ **Correção Ago/2026: checagem
+  explícita e obrigatória aqui, por candidato específico** (não mais "já coberto na
+  Fase 2.1"). A busca da Fase 2.1 é ampla, olhando a janela inteira para achar QUALQUER
+  incidente que bata com QUALQUER vertical monitorada — não é o mesmo que confirmar,
+  candidato por candidato, se o tema específico dele já está lá. Buscar aqui de novo,
+  com termos específicos do candidato (nome do produto, palavra-chave do tipo de
+  problema), antes de gerar o alerta. **Se já estiver sinalizado lá — mesmo que a Fase
+  2.1 não o tenha capturado como gatilho preventivo — não é necessária nenhuma ação de
+  alerta.**
 - `#comunicados_e_atualizações_cx` (ID: `C012NMP0UBE`)
 - `#lideres-cx-e-cxm` (ID: `C052R2X2DEE`)
 - Canal da squad correspondente à vertical do candidato (ver `canais.json` para o
@@ -483,11 +502,6 @@ execução (Fase 0):
   janela de busca aqui para cobrir desde o início do dia, não só desde a última
   execução — um incidente que já foi alertado às 10h e segue em ciclos às 13h/16h **não
   deve gerar um segundo alerta**, mesmo que a Fase 2.1 o agrupe novamente como candidato.
-
-`#escalation_incidents` **não precisa ser buscado de novo aqui** — já foi coberto na
-Fase 2.1 para toda a janela. Se o candidato veio do gatilho preventivo, ele já está,
-por definição, mapeado nesse canal (mas ainda pode não estar em nenhum dos outros 4
-verificados aqui, o que ainda justifica o alerta se for o caso).
 
 **Como buscar:** `slack_search_public_and_private` com `in:#canal after:{JANELA_INICIO}`
 (usar `after:{INÍCIO_DO_DIA}` especificamente para a checagem em `#the-voice-cx`),
@@ -717,7 +731,8 @@ feedbacks reais citados na mensagem secundária de evidência (Fase 5D).
 - [ ] Checagem de mapeamento prévio (Fase 3) incluiu busca em `#the-voice-cx` desde o início do dia, para evitar alertar 2x o mesmo incidente em execuções diferentes
 - [ ] Critério de alta criticidade checado primeiro (Fase 2), gerando lista curta de candidatos — sem busca no Slack ainda
 - [ ] `#escalation_incidents` verificado uma única vez (Fase 2.1), não por vertical
-- [ ] Verificação de mapeamento prévio (Fase 3) feita só para os candidatos, nos 2 canais gerais + canal da squad — nunca para as 18 verticais de uma vez
+- [ ] Verificação de mapeamento prévio (Fase 3) feita só para os candidatos, nos 3 canais gerais (incluindo `#escalation_incidents` de novo, específico por candidato) + canal da squad — nunca para as 18 verticais de uma vez
+- [ ] Nenhum alerta de queda de volume de contatos/Central de Ajuda ou queda de CSAT foi gerado — só silêncio total, queda de retenção de bot e queda de NPS Transacional permanecem como critério de queda
 - [ ] Nenhum alerta disparado para tema já mapeado em outro canal
 - [ ] Nenhuma mensagem enviada ao canal da squad — só `#the-voice-cx`
 - [ ] Responsável marcado com `@` conforme `mapeamento-responsaveis.json`, ou alerta enviado sem menção quando On Demand/não mapeado (nunca `<!here>` como substituto)
