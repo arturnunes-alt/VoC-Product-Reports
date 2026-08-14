@@ -106,6 +106,45 @@ Chamar com `projectId: "332381"` fora da definição também.
 para validar vários artigos candidatos de uma vez em uma única chamada, em vez de uma
 chamada por artigo (economiza custo).
 
+**⚠️ CRÍTICO — `start`/`end` NÃO recortam sub-dia, mesmo passando timestamps precisos.**
+Confirmado empiricamente em execução real (Fase 1B, 14/08/2026): uma query
+`eventsSegmentation` com `interval: 1` (diário) e `start`/`end` = uma janela de poucas
+horas dentro do mesmo dia (ex: `"2026-08-14T13:00:00Z"` a `"2026-08-14T16:22:00Z"`, ou
+seja 10:00–13:22 BRT) **não retorna o total dessa janela — retorna o total do DIA
+INTEIRO** (00:00–23:59 no timezone do projeto, America/Sao_Paulo). Confirmado batendo
+o número retornado (194) contra a soma das 24 buckets horárias do mesmo dia (≈196,
+diferença explicada por dedup de uniques) — o valor "janela" e o valor "dia inteiro"
+eram a mesma coisa. O mesmo aconteceu com `interval: -3600000` (horário): mesmo
+passando `start`/`end` restritos a poucas horas, a resposta trouxe as 24 buckets do dia
+inteiro (0h–23h), não só as horas dentro do intervalo pedido.
+
+**Consequência prática:** os parâmetros `start`/`end` (e os presets `range`) só
+funcionam como filtro de **dia(s) inteiro(s)** no timezone do projeto — não há como
+pedir diretamente "das 10:00 às 13:22 de hoje" e receber só esse recorte. Para montar
+uma comparação intraday (ex: "hoje 10:00–13:22" vs "ontem 10:00–13:22"):
+1. Rodar a query com `interval: -3600000` (horário) e `range`/`start`-`end` cobrindo o
+   dia inteiro de cada data (preset `"Yesterday"` funciona; `"Today"` retornou erro
+   "Must specify a valid start date or range" numa execução real — usar `start`
+   explícito = meia-noite local em UTC, ex. `"2026-08-14T03:00:00Z"` para 00:00 BRT, e
+   `end` = agora).
+2. Somar manualmente só as buckets horárias que caem dentro da janela desejada
+   (ex: buckets 10h, 11h, 12h, 13h BRT).
+3. **Viés conhecido:** a bucket da última hora do dia de baseline vem completa (hora
+   cheia), enquanto a de hoje só tem dado até o momento atual da execução — isso
+   infla um pouco o baseline se a rotina rodar no meio de uma hora (ex: às 13:22, a
+   bucket de baseline das 13h-14h tem a hora toda, a de hoje só tem até :22). Para
+   janelas curtas ou quando o resultado estiver perto do limiar de alerta, considerar
+   escalar proporcionalmente a última bucket do baseline (`valor * minutos_decorridos
+   / 60`) antes de comparar.
+4. Nota: somar uniques por hora tende a **superestimar levemente** o unique real da
+   janela (mesmo usuário pode aparecer em mais de uma hora e ser contado em cada uma) —
+   aceitável para monitoramento de tendência, não usar esse número como métrica oficial
+   auditável.
+
+Não confiar em uma única chamada com `start`/`end` intraday e `interval` diário
+achando que ela recorta a janela — sempre validar com o breakdown horário antes de
+reportar um número "de hoje até agora" como se fosse a janela pedida.
+
 ---
 
 ## 5. DASHBOARD OFICIAL JÁ EXISTENTE
