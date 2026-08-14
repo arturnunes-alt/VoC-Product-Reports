@@ -6,7 +6,7 @@ description: >
   criticidade, verifica se já estão mapeadas em canais estratégicos, e alerta o time de
   CXM em #the-voice-cx marcando o responsável do produto afetado — sem nunca postar no
   canal da squad.
-version: "3.1"
+version: "3.2"
 model: "claude-sonnet-5"
 trigger_10h: "Segunda a sexta às 10:00 BRT (13:00 UTC)"
 trigger_13h: "Segunda a sexta às 13:00 BRT (16:00 UTC)"
@@ -308,7 +308,7 @@ Um item só vira **candidato a alerta** se passar **pelo menos um** destes crit�
 tabela cobre tanto **aumentos inesperados** quanto **quedas inesperadas** — os dois
 sentidos importam, não só picos.
 
-### Classificação de Potencial de Contatos — portão obrigatório para volume E preventivo
+### Classificação de Potencial de Contatos — portão obrigatório para volume E preventivo (via planilha IndeCX)
 
 > ⚠️ **Correção Ago/2026 (v1):** dois alertas de Transporte foram disparados alinhados
 > com o threshold percentual, mas de baixo valor prático — a vertical tem volume
@@ -321,11 +321,23 @@ sentidos importam, não só picos.
 > **gatilho preventivo** (Fase 2.1), mostrou que a exceção que esse gatilho tinha do
 > portão de potencial não deveria existir — o portão agora vale **também** para o
 > preventivo, não só para pico/queda de volume.
+>
+> ⚠️ **Correção Ago/2026 (v3) — `#escalation_incidents` deixou de ser gatilho preditivo
+> puro.** Existe um alerta automatizado enviado diretamente ao cliente sempre que um
+> caso é reportado em `#escalation_incidents` — ou seja, o cliente já é avisado antes
+> mesmo do CXM. Um incidente aparecer lá **não basta mais** para virar candidato,
+> **em nenhum nível de potencial** — só passa a ser candidato se **também** houver
+> aumento real de contatos recebidos (critério de pico da tabela "Aumentos inesperados"
+> ou de bugs). Isso não é mais uma questão de potencial de contatos, é uma mudança de
+> regra que vale para as 18 verticais igualmente. Ver Fase 2.1 para o detalhe completo —
+> **a tabela abaixo, coluna "gatilho preventivo", passou a valer só para o log de
+> eventos da planilha IndeCX**, que não tem esse alerta automático ao cliente e continua
+> funcionando como preditivo puro.
 
-| Potencial de Contatos | Verticais | Critérios de volume (pico/queda) | Gatilho preventivo (Fase 2.1) |
+| Potencial de Contatos | Verticais | Critérios de volume (pico/queda) | Gatilho preventivo — **só planilha IndeCX** (`#escalation_incidents` não conta mais sozinho, ver nota acima) |
 |---|---|---|---|
-| **Alto** | Pix, Cartão de Crédito, Empréstimo, Minha Conta, Conta Desativada, Carteira Desativada | ✅ Sim — thresholds normais das tabelas abaixo | ✅ Sim — qualquer incidente mencionado vira candidato |
-| **Médio** | CDB, Tap to Pay, Chargeback Recovery | ⚠️ Só com threshold elevado — dobrar o % exigido (ex: pico vira 160% em vez de 80%) e volume mínimo mais alto (ex: 25 em vez de 15) | ⚠️ Só se o incidente ainda estiver **ativo/não resolvido** no momento da checagem — não basta ter sido mencionado em algum momento da janela |
+| **Alto** | Pix, Cartão de Crédito, Empréstimo, Minha Conta, Conta Desativada, Carteira Desativada | ✅ Sim — thresholds normais das tabelas abaixo | ✅ Sim — qualquer evento da planilha vira candidato |
+| **Médio** | CDB, Tap to Pay, Chargeback Recovery | ⚠️ Só com threshold elevado — dobrar o % exigido (ex: pico vira 160% em vez de 80%) e volume mínimo mais alto (ex: 25 em vez de 15) | ⚠️ Só se o evento ainda estiver ativo/não resolvido no momento da checagem |
 | **Baixo** | Transporte, RAF, Rendimento CDI, Link de Pagamento, Contas e Boletos, Boleto de Cobrança, Recarga de Celular | ❌ Não disparar pico/queda de volume — ver exceção abaixo | ❌ Não disparar preventivo — ver exceção abaixo |
 
 **Exceção — verticais de Baixo potencial (e Médio fora do critério acima) ainda podem
@@ -409,68 +421,71 @@ o dono do processo revisar e ajustar os números acima no repositório.
 horário** (já é a regra padrão desta Routine), nunca comparar contra a média do dia
 inteiro, ou toda madrugada vai disparar falso alerta de "queda".
 
-### 2.1 — Gatilho preventivo (`#escalation_incidents` + log de eventos da planilha IndeCX)
+### 2.1 — Duas fontes de contexto de incidente, tratadas de forma diferente
 
-> ⚠️ **Correção Ago/2026 (v3) — criticidade aumentada após análise real da semana de
-> 03–07/08:** 3 dos 9 alertas da semana foram sobre a mesma instabilidade recorrente de
-> Transporte (NewRelic, auto-cicla e resolve em ~1h), **sempre concluindo "sem impacto de
-> volume"** — em dois dos três, o volume estava *abaixo* do normal. Transporte é
-> vertical de Baixo potencial; isso nunca deveria ter gerado alerta. Os passos abaixo
-> foram reforçados para que isso não se repita.
+> ⚠️ **Correção Ago/2026 (v4) — `#escalation_incidents` deixou de ser gatilho por si só.**
+> Existe alerta automatizado enviado direto ao cliente quando um caso é reportado em
+> `#escalation_incidents` — o cliente já sabe antes do CXM. Um alerta de CXM baseado
+> **só** nisso é redundante na maioria das vezes. A partir de agora, incidente reportado
+> lá **só vira alerta se também houver aumento real de contatos** (critério de pico da
+> Fase 2) — em qualquer nível de potencial, não só Baixo/Médio como nas correções
+> anteriores. **Isto substitui o comportamento anterior desta seção para
+> `#escalation_incidents`** — ver histórico de correções (v1-v3) logo acima, na tabela de
+> Potencial de Contatos, mantido só como registro de como chegamos aqui.
 
-Fazer **uma única busca** (não 18) em `#escalation_incidents` (ID: `CCP2AGBV1`) cobrindo
-a janela desta execução (Fase 0), procurando manutenções/incidentes reportados. Somar a
-isso o log de eventos já lido na Fase 1C (final da planilha IndeCX) — mesma lógica,
-segunda fonte.
+**A. `#escalation_incidents` (ID: `CCP2AGBV1`) — agora é contexto, não gatilho isolado**
 
-**Passo 1 — Agrupar por incidente antes de qualquer outra coisa.** Ciclos automáticos
-(ex: alertas NewRelic que abrem/fecham repetidamente para o mesmo problema ao longo da
-noite) são **um único incidente**, não um por ciclo. Agrupar todas as ocorrências que
-se referem ao mesmo tema/serviço/domínio dentro da janela em **um candidato só**, usando
-o horário do primeiro ciclo como referência. Não gerar um candidato por ciclo — 6 ciclos
-do mesmo incidente viram 1 candidato, não 6.
+Fazer uma única busca cobrindo a janela desta execução. **Passo 1 — agrupar por
+incidente:** ciclos automáticos do mesmo problema (ex: NewRelic abre/fecha repetidamente)
+são um único incidente, não um por ciclo.
 
-**Passo 2 — Aplicar o portão de Potencial de Contatos ANTES de qualquer outra
-consideração — este é o primeiro filtro, não um ajuste posterior:**
-- **Alto potencial:** qualquer incidente agrupado vira candidato, mesmo sem anomalia de
-  volume visível ainda — objetivo preditivo pleno.
-- **Médio potencial:** só vira candidato se o incidente **ainda estiver ativo/não
-  resolvido** no momento da checagem (ex: último ciclo sem status de encerramento) — não
-  basta ter sido mencionado em algum ponto da janela se já foi resolvido.
-- **Baixo potencial:** **descartar imediatamente, sem exceção.** Mesmo um incidente real,
-  confirmado, com múltiplos ciclos ou duração longa — **não gera candidato preventivo**
-  nesta vertical. Isso vale mesmo que o incidente pareça "grave" na descrição (ex:
-  "instabilidade", "afetando múltiplas cidades") — gravidade textual do incidente não
-  substitui o critério de potencial de contatos da vertical.
-  ⚠️ **Exemplo real desta correção:** os 3 alertas de Transporte de 03–04/08 (instabilidade
-  de recarga em SP/Campinas, ciclos NewRelic) deveriam ter sido descartados aqui, neste
-  passo, antes de chegar a qualquer outra análise.
+**Passo 2 — cruzar com candidatos reativos, não gerar candidato novo:** para cada
+incidente agrupado, verificar se a vertical/tema correspondente **já** é candidata pelos
+critérios de "Aumentos inesperados"/"Bug" da Fase 2 (pico de contatos, aumento de bug).
+- **Se já é candidata por critério reativo:** o incidente encontrado aqui vira
+  **contexto/corroboração** desse alerta — não gera um segundo alerta, enriquece o que já
+  existe (explica o "porquê" do pico). Guardar para usar na Fase 5 (evidência).
+- **Se não há candidato reativo correspondente:** **não gerar alerta nenhum a partir
+  daqui**, independente de potencial de contatos, gravidade textual do incidente, ou
+  quantos ciclos tenha tido. O cliente já foi avisado pelo alerta automático — sem
+  aumento de contatos, não há sinal de que o CXM precise agir agora.
 
-Resta a exceção geral (silêncio total/canal público-reputacional/NPS-CSAT) se algum desses também
-estiver presente — essas continuam valendo para qualquer potencial, independente deste
-gatilho.
+**B. Log de eventos da planilha IndeCX (Fase 1C) — continua como gatilho preditivo
+independente**, já que não tem o alerta automático ao cliente associado:
 
-**Passo 3 — Verificar se este mesmo incidente já foi alertado numa execução anterior**
-(ver regra de deduplicação entre execuções na Fase 3, que agora também busca em
-`#the-voice-cx`) — um incidente que já gerou alerta às 10h e continua cronologicamente
-o mesmo às 13h (mesmo que com novos ciclos) não deve gerar um segundo alerta idêntico.
+**Passo 1 — Agrupar por evento**, mesma lógica do item A.
 
-**Passo 4 — Suprimir recorrência do mesmo padrão sem impacto novo (novo, Ago/2026):**
-mesmo para verticais de Alto/Médio potencial que passaram o Passo 2, se uma busca em
-`#the-voice-cx` (mesma mecânica do Passo 3, mas com janela de até 48h, não só desde a
-última execução) encontrar um alerta preventivo anterior **para o mesmo
-tema/serviço/domínio** cuja conclusão foi "sem impacto de volume": este novo candidato
-só continua válido se **também** passar um critério reativo (pico/queda/bug da Fase 2) —
-a menção isolada do incidente não basta mais na segunda vez. Isto evita alertar
-repetidamente "ainda sem impacto" para o mesmo problema recorrente que se autocura antes
-de gerar volume real. Se a instabilidade realmente começar a gerar volume, o critério
-reativo vai capturar isso naturalmente — não é necessário manter o preventivo "vivo"
-só por precaução.
+**Passo 2 — Aplicar o portão de Potencial de Contatos** (tabela acima, coluna "Gatilho
+preventivo — só planilha IndeCX"):
+- **Alto potencial:** qualquer evento agrupado vira candidato, mesmo sem anomalia de
+  volume visível ainda.
+- **Médio potencial:** só vira candidato se o evento ainda estiver ativo/não resolvido.
+- **Baixo potencial:** descartar imediatamente, sem exceção — mesma regra de sempre.
+
+Resta a exceção geral (silêncio total/canal público-reputacional/NPS-CSAT) se algum
+desses também estiver presente — essas continuam valendo para qualquer potencial,
+independente deste gatilho.
+
+**Passo 3 (ambas as fontes) — Verificar se este mesmo incidente/evento já foi alertado
+numa execução anterior** (ver regra de deduplicação entre execuções na Fase 3, que agora
+também busca em `#the-voice-cx`) — um tema que já gerou alerta às 10h e continua
+cronologicamente o mesmo às 13h (mesmo que com novos ciclos) não deve gerar um segundo
+alerta idêntico.
+
+**Passo 4 (só fonte B, planilha IndeCX) — Suprimir recorrência do mesmo padrão sem
+impacto novo:** mesmo para verticais de Alto/Médio potencial que passaram o Passo 2 da
+fonte B, se uma busca em `#the-voice-cx` (janela de até 48h) encontrar um alerta
+preventivo anterior para o mesmo tema/serviço/domínio cuja conclusão foi "sem impacto de
+volume": este novo candidato só continua válido se **também** passar um critério reativo
+— a menção isolada não basta mais na segunda vez. Este passo não se aplica à fonte A
+(`#escalation_incidents`), que já exige corroboração de volume desde a primeira
+ocorrência, conforme item A acima.
 
 **Resultado desta fase:** uma lista curta de verticais candidatas (tipicamente 0 a 3),
-combinando as que passaram algum threshold numérico e/ou bateram no gatilho preventivo
-(após os 4 passos acima). Se a lista estiver vazia, encerrar a execução aqui — não é
-necessário rodar a Fase 3.
+combinando as que passaram algum threshold numérico (Aumentos/Bug), as que bateram no
+gatilho preventivo da fonte B (planilha IndeCX), e enriquecendo com contexto da fonte A
+(`#escalation_incidents`) quando aplicável. Se a lista estiver vazia, encerrar a execução
+aqui — não é necessário rodar a Fase 3.
 
 ---
 
@@ -553,7 +568,7 @@ prioridade aqui):**
 
 *O que foi observado:* {descrição objetiva em 1–2 linhas}
 *Comparação:* {valor da janela} vs. {baseline mesmo recorte} ({+/-X%})
-*Categoria:* [Pico — aumento inesperado de volume/contatos / Queda — redução inesperada de volume, possível falha de canal / Preventivo — incidente de infra sem impacto em volume ainda / Bug — aumento de tickets derivados como defeito de produto]
+*Categoria:* [Pico — aumento inesperado de volume/contatos / Queda — redução inesperada de volume, possível falha de canal / Preventivo — evento da planilha IndeCX sem impacto em volume ainda (fonte B) / Bug — aumento de tickets derivados como defeito de produto]
 *Checagem de mapeamento prévio:* não encontrado em #escalation_incidents,
 #comunicados_e_atualizações_cx, #lideres-cx-e-cxm nem no canal da squad, na janela
 {JANELA_INICIO}–{JANELA_FIM}.
@@ -725,8 +740,9 @@ feedbacks reais citados na mensagem secundária de evidência (Fase 5D).
 - [ ] Baseline comparado no mesmo recorte de horário, nunca dia completo vs. parcial
 - [ ] Critérios de alta criticidade checados nos dois sentidos — aumentos E quedas inesperadas, não só picos (Fase 2)
 - [ ] Critérios de pico/queda de volume aplicados apenas a verticais de Alto potencial de contatos — Médio com threshold elevado, Baixo excluído (exceto silêncio total/canal público-reputacional/NPS-CSAT, que valem para qualquer potencial)
-- [ ] Gatilho preventivo (Fase 2.1, Passo 2) aplicou o portão de Potencial de Contatos como PRIMEIRO filtro — Baixo potencial descartado imediatamente, sem exceção, mesmo para incidente com descrição grave
-- [ ] Gatilho preventivo (Fase 2.1, Passo 4) verificou recorrência do mesmo tema em `#the-voice-cx` nas últimas 48h — se já alertado como "sem impacto" antes, exigiu critério reativo adicional para alertar de novo
+- [ ] Fonte A (`#escalation_incidents`): incidente encontrado só virou alerta se também havia candidato reativo (pico/bug) correspondente — nunca sozinho, em nenhum potencial
+- [ ] Fonte B (planilha IndeCX, Fase 2.1-B): portão de Potencial de Contatos aplicado como primeiro filtro — Baixo potencial descartado imediatamente, sem exceção
+- [ ] Fonte B (Fase 2.1-B, Passo 4): verificou recorrência do mesmo tema em `#the-voice-cx` nas últimas 48h — se já alertado como "sem impacto" antes, exigiu critério reativo adicional para alertar de novo (não se aplica à fonte A, que já exige isso desde a primeira ocorrência)
 - [ ] Ciclos automáticos repetidos do mesmo incidente (ex: NewRelic) agrupados como 1 candidato só, não 1 por ciclo
 - [ ] Checagem de mapeamento prévio (Fase 3) incluiu busca em `#the-voice-cx` desde o início do dia, para evitar alertar 2x o mesmo incidente em execuções diferentes
 - [ ] Critério de alta criticidade checado primeiro (Fase 2), gerando lista curta de candidatos — sem busca no Slack ainda
