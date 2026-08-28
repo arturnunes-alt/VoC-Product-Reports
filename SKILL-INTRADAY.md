@@ -79,6 +79,31 @@ não tem esse dado ainda, então essa camada extra não se aplica.
 — essa fonte tem defasagem de 1 dia e não serve para checagem intraday. Usar sempre as
 ferramentas ao vivo abaixo para o período coberto por esta execução.
 
+> ⚠️ **Correção Ago/2026 — dois bugs de sintaxe de query confirmados na ferramenta
+> Zendesk (`zendesk___zendesk`), independente de qual variante do MCP for usada.**
+> Confirmado empiricamente por múltiplas execuções na mesma sessão, custou dezenas de
+> chamadas extras de ferramenta por vertical até ser contornado — vale a pena ler antes
+> de rodar qualquer query desta fase:
+> 1. **`created>=`/`created<` com timestamp completo (`YYYY-MM-DDTHH:MM:SSZ`) é
+>    instável** — em várias tentativas retornou 0 resultados mesmo para ranges válidos
+>    com dados conhecidos. **Usar `created:YYYY-MM-DD` (granularidade de dia, opera no
+>    timezone da conta Zendesk, UTC-3/BRT, não em UTC)** e fazer o bucket exato por
+>    `created_at` (retornado em UTC em cada ticket) manualmente, no lado do
+>    cliente/agente, para as janelas de horário específicas desta Routine. Não aproximar
+>    por dia inteiro — a precisão do recorte de horário é o que sustenta a comparação de
+>    baseline desta rotina.
+> 2. **`tags:X tags:Y` (dois ou mais tags positivos na mesma query) funciona como OR
+>    (união), não AND (interseção)** — inclusive com espaço simples ou com `OR`
+>    explícito entre parênteses, nenhuma variante testada produziu interseção real.
+>    Isso invalida literalmente os exemplos de query desta skill que cruzam duas tags
+>    positivas (ex: `tags:bug tags:{TAG_VERTICAL}` na Fase 1E, `tags:pix-in OR
+>    tags:pix-out OR tags:pix-chaves_pix` na Fase 1A-i para Pix/RAF/Empréstimo). Para
+>    segmentar por vertical dentro de um filtro maior (bug, retenção etc.), buscar pelo
+>    filtro principal isoladamente e depois classificar cada ticket retornado pelas tags
+>    de vertical presentes no próprio objeto — nunca tentar combinar as duas tags na
+>    query. Para verticais com múltiplas tags próprias (Pix, RAF, Empréstimo), rodar uma
+>    query por tag e mesclar/deduplicar por `id` do ticket no lado do cliente.
+
 ### 1A — Contatos humanos e de bot (Zendesk MCP, ao vivo)
 
 **Ferramenta:** `zendesk___zendesk` via `[TEST] MCP Gateway AWS AgentCore` — forçar
