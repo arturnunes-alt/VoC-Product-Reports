@@ -227,6 +227,7 @@ Listar apenas movimentos que exijam ação do time de análise:
 🔴 *[NOME]* | Observado: [X] | Esperado: [Y] | [contexto 1 linha]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 **Comparação histórica:** Sempre comparar com as 5 semanas anteriores para volume,
@@ -298,6 +299,7 @@ contexto de gestão ativo. Identificar os 2–3 resultados mais relevantes para 
 🟡 [situação a monitorar se houver]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 **Regras editoriais:**
@@ -379,6 +381,7 @@ PF: [X%] · PJ: [X%]
 • [variação relevante com explicação]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 ```
@@ -462,6 +465,7 @@ Top causas raiz (qualitativo):
 • [temas do canal correlacionados com variações nos dados]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 ```
@@ -531,6 +535,7 @@ _(NewNew não se aplica a esta vertical — ver nota acima)_
 • [temas do canal + variações nos dados]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 ```
@@ -590,6 +595,7 @@ Temas dos detratores nas respostas abertas.
 • [temas do canal + variações]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 ```
@@ -651,6 +657,7 @@ Top causas raiz (qualitativo):
 • [temas do canal + variações]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 **Para Contas e Boletos, Boleto de Cobrança e Recarga de Celular:** usar estrutura padrão
@@ -712,6 +719,7 @@ Temas dos detratores.
 • [temas do canal + variações]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 **Para Pix CC e RAF:** usar estrutura padrão de produto sem a abertura de subtipo de Pix.
@@ -769,6 +777,7 @@ Temas dos detratores nas respostas abertas.
 • [temas do canal + variações]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 ```
@@ -816,6 +825,7 @@ New [X%] · NewNew [X%] · Repeat [X%]
 • [temas do canal + variações]
 
 🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 ```
@@ -890,3 +900,11 @@ das listas de "Top motivos de contato" e "Top causas raiz" em qualquer report �
 comentar como se fosse um tema qualitativo real. Nunca excluir do total de volume/contact
 rate — o ticket é real, só não teve serviço efetivamente prestado. Ver query com a
 exclusão em `skill-zendesk-cx.md` §"Top Motivos de Contato".
+
+**Temas novos ou não mapeados com crescimento (Ago/2026, obrigatório em todo report):**
+não basta olhar o Top 3/Top 10 de volume absoluto da semana — checar a série de 5
+semanas por motivo/causa raiz procurando temas que não existiam antes e passaram a ter
+volume, ou que crescem consistentemente (>30% semana a semana, 2+ semanas seguidas)
+mesmo ainda pequenos em volume absoluto. Incluir os confirmados na seção "Destaques e
+Oportunidades", sinalizando que é tendência emergente, não volume absoluto. Ver
+metodologia completa em `SKILL.md` Fase 3.
