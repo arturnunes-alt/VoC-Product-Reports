@@ -631,17 +631,47 @@ Usar para correlacionar picos de volume com incidentes identificados na
 Fase 1 (leitura de Slack).
 
 ### Flag Pix via Cartão (Pix CC)
-Derivada para identificar transações Pix originadas de cartão de crédito:
+
+> ⚠️ **Correção Ago/2026 — sinal primário passou a ser a transcrição, não os campos
+> categóricos.** `reason_contact`/`root_cause` são escolhidos por regra/agente e podem
+> não capturar a nuance de "envolve cartão" mesmo quando o cliente menciona isso na
+> conversa. A partir de agora, considerar **qualquer menção de "cartão"/"cartao" na
+> transcrição do ticket** como o sinal principal — os campos categóricos continuam
+> valendo como sinal adicional, não como substituto.
+
+Derivada para identificar transações Pix originadas de cartão de crédito, dentro da
+vertical `pix::out`:
+
 ```sql
 CASE 
     WHEN LOWER(t.vertical) = 'pix::out' AND 
          REGEXP_LIKE(LOWER(CONCAT_WS(' ',
              t.reason_contact, t.root_cause,
-             s.customer_issue, s.customer_complaint
-         )), 'cartao|cartão|cc')
+             s.customer_issue, s.customer_complaint, s.support_solution
+         )), 'cartao|cartão')
     THEN 1 ELSE 0
 END AS flag_pix_cartao
 ```
+`s` = `fat_tickets_transcription_summary` (resumo por IA — colunas confirmadas:
+`customer_issue`, `customer_complaint`, `support_solution`). Removido o termo isolado
+`cc` do padrão anterior — gera falso positivo alto (substring comum em outras
+palavras); usar só `cartao|cartão`.
+
+**Para cobertura mais completa — incluir a transcrição bruta quando o resumo por IA não
+for suficiente ou não estiver disponível** (cobertura só a partir de maio/2026):
+```sql
+CASE 
+    WHEN LOWER(t.vertical) = 'pix::out' AND (
+         REGEXP_LIKE(LOWER(CONCAT_WS(' ', t.reason_contact, t.root_cause,
+             s.customer_issue, s.customer_complaint, s.support_solution)), 'cartao|cartão')
+         OR LOWER(raw.*) LIKE '%cartao%' OR LOWER(raw.*) LIKE '%cartão%'  -- ajustar coluna real após confirmar via SELECT * em fat_tickets_transcription
+    )
+    THEN 1 ELSE 0
+END AS flag_pix_cartao
+```
+⚠️ Nome de coluna da transcrição bruta (`fat_tickets_transcription`) não confirmado
+formalmente (fonte oficial usa `SELECT *`, ver `skill-databricks-mcp.md` §4) — confirmar
+o nome real da coluna de texto antes de usar esta segunda versão em produção.
 
 ---
 
@@ -658,78 +688,108 @@ Ao citar trechos: omitir CPF, telefone, e-mail e dados bancários.
 
 ### 10. `prod.cx.fat_help_center_events` — Acessos à Central de Ajuda
 
+> ⚠️ **Correção Ago/2026 — schema e queries validados diretamente, substituindo
+> especificações anteriores não confirmadas.** Nomes de coluna corrigidos
+> (`date_created_br`, não `event_date`; `article`, não `article_title`), coluna
+> `session_id` incorporada (essencial para contagem correta de visita única), e um
+> problema real de qualidade de dado identificado (`article = 'pronto'`).
+
 | Campo | Descrição |
 |---|---|
 | `userid` | ID do usuário |
-| `event_category` | Tipo de evento — ver valores abaixo. **Sempre filtrar por este campo antes de agregar** |
-| `article_id` | ID do artigo acessado (populado quando `event_category = 'artigo'`) |
-| `article_title` | Título do artigo (idem) |
-| `vertical` | Coluna própria — vertical/produto do evento. Independente de `event_category` |
-| `event_date` | Data do evento (BRT) |
-| `next_action` | Ação seguinte: bot, automação, sem ação (populado quando `event_category = 'artigo'`) |
+| `session_id` | ID da sessão — **usar junto com `userid` para "visita única"**, não `userid` sozinho (ver Query 10.1) |
+| `event_category` | Tipo de evento. Valores confirmados: `artigo`, `vertical`. `pesquisa`/`ajuda` mencionados em versão anterior desta seção, **não confirmados** — validar antes de usar |
+| `article` | Nome/identificador do artigo (populado quando `event_category = 'artigo'`) — **tem valor corrompido conhecido**, ver nota de qualidade de dado abaixo |
+| `vertical` | Vertical/produto do evento. Valores de descarte conhecidos: `nao_mapeado`, `outros` — sempre excluir |
+| `date_created_br` | Data do evento (BRT) |
 
-**Valores de `event_category` e o que cada um mede:**
+**⚠️ Qualidade de dado conhecida — `article = 'pronto'`:** pelo menos um artigo aparece
+com o valor truncado/corrompido `'pronto'` em vez do nome real. Tratar com `CASE WHEN`
+ao agrupar por artigo (ver Query 10.3) — o nome real confirmado para esse caso específico
+é "paguei meu emprestimo mas nao recebi uma nova oferta por que". Se surgir um novo
+valor genérico/corrompido parecido, investigar e mapear da mesma forma antes de tratar
+como ruído.
 
-| Valor | O que representa | Uso na análise |
-|---|---|---|
-| `artigo` | Cliente abriu um artigo específico | Top artigos, funil artigo → bot/automação |
-| `vertical` | Cliente navegou até a página de categoria/vertical sem abrir artigo específico | Demanda por tema sem conteúdo específico — indica busca não resolvida por falta de artigo direto |
-| `pesquisa` | Cliente usou a busca da Central de Ajuda | Termos buscados — sinaliza intenção não atendida se não há clique subsequente em artigo |
-| `ajuda` | Acesso genérico à Central de Ajuda (home, sem navegação específica) | Volume de entrada no topo do funil, antes de qualquer segmentação |
-
-⚠️ **Confirmar via `databricks_preview_query` antes da primeira execução:**
-- Grafia exata dos valores (minúsculo `'artigo'` vs `'Artigo'` etc.)
-- Nome da coluna que armazena o termo buscado em `event_category = 'pesquisa'`
-  (ex: `search_term`, `query_text` — não documentado, validar com `SELECT * LIMIT 5`)
+**⛔ REGRA CRÍTICA — nunca derivar o total de uma dimensão somando outra dimensão.** O
+volume de acessos únicos por artigo, somado, **não bate** com o volume por vertical, que
+por sua vez **não bate** com o volume total da semana — porque `COUNT(DISTINCT
+CONCAT(userid, '-', session_id))` não se distribui aditivamente entre dimensões (um
+mesmo usuário/sessão pode aparecer em mais de um artigo/vertical na mesma semana, e conta
+uma vez em cada agrupamento, mas só uma vez no total). **Sempre rodar a query com o
+`GROUP BY` exato da dimensão que se quer** (total, por vertical, ou por artigo) — nunca
+somar os resultados de uma consulta mais granular para "chegar" no total de uma menos
+granular, nem o contrário.
 
 ---
 
-**Query 10.1 — Volume por tipo de evento (visão geral do funil de entrada)**
+**Query 10.1 — Visitas únicas totais por semana**
 ```sql
 SELECT
-    event_category,
-    COUNT(DISTINCT userid) AS usuarios_unicos,
-    COUNT(*)               AS total_eventos
-FROM `prod`.`cx`.`fat_help_center_events`
-WHERE DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
-GROUP BY event_category
-ORDER BY total_eventos DESC;
+  DATE(DATE_TRUNC('week', DATE(date_created_br))) AS semana,
+  COUNT(DISTINCT CONCAT(userid, '-', session_id)) AS visitas_unicas_semana
+FROM prod.cx.fat_help_center_events
+WHERE event_category IN ('artigo', 'vertical')
+  AND NOT vertical IN ('nao_mapeado', 'outros')
+  AND DATE(date_created_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY DATE_TRUNC('week', DATE(date_created_br))
+ORDER BY semana ASC;
 ```
 
-**Query 10.2 — Top artigos acessados por vertical**
+**Query 10.2 — Visitas únicas por vertical, por semana**
 ```sql
 SELECT
-    vertical,
-    article_title,
-    COUNT(DISTINCT userid) AS usuarios_unicos,
-    COUNT(*)               AS total_acessos,
-    SUM(CASE WHEN next_action = 'bot' THEN 1 ELSE 0 END)        AS avancou_bot,
-    SUM(CASE WHEN next_action = 'automacao' THEN 1 ELSE 0 END)  AS avancou_automacao,
-    SUM(CASE WHEN next_action = 'sem_acao' THEN 1 ELSE 0 END)   AS sem_acao_seguinte
-FROM `prod`.`cx`.`fat_help_center_events`
+  vertical,
+  DATE(DATE_TRUNC('week', DATE(date_created_br))) AS start_of_week,
+  COUNT(DISTINCT CONCAT(userid, '-', session_id)) AS visitas_unicas_semana
+FROM prod.cx.fat_help_center_events
 WHERE event_category = 'artigo'
-  AND DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
-  AND vertical = '{VERTICAL}'
-GROUP BY vertical, article_title
-ORDER BY total_acessos DESC
-LIMIT 10;
+  AND article IS NOT NULL
+  AND DATE(date_created_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY vertical, DATE(DATE_TRUNC('week', DATE(date_created_br)))
+ORDER BY visitas_unicas_semana DESC;
 ```
 
-**Query 10.3 — Navegação por vertical sem artigo específico (gap de conteúdo)**
+**Query 10.3 — Visitas únicas por artigo, por semana (com correção de qualidade de dado)**
+```sql
+SELECT
+  CASE
+    WHEN article = 'pronto'
+    THEN 'paguei meu emprestimo mas nao recebi uma nova oferta por que'
+    ELSE article
+  END AS article,
+  vertical,
+  DATE(DATE_TRUNC('week', DATE(date_created_br))) AS start_of_week,
+  COUNT(DISTINCT CONCAT(userid, '-', session_id)) AS visitas_unicas_semana
+FROM prod.cx.fat_help_center_events
+WHERE event_category = 'artigo'
+  AND article IS NOT NULL
+  AND DATE(date_created_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY
+  CASE WHEN article = 'pronto' THEN 'paguei meu emprestimo mas nao recebi uma nova oferta por que' ELSE article END,
+  vertical,
+  DATE(DATE_TRUNC('week', DATE(date_created_br)))
+ORDER BY visitas_unicas_semana DESC;
+```
+
+**Query 10.4 — Navegação por vertical sem artigo específico (gap de conteúdo)**
 ```sql
 -- Alto volume aqui = cliente busca o tema mas não encontra artigo direto
 SELECT
     vertical,
-    COUNT(DISTINCT userid) AS usuarios_unicos,
-    COUNT(*)               AS total_acessos
-FROM `prod`.`cx`.`fat_help_center_events`
+    DATE(DATE_TRUNC('week', DATE(date_created_br))) AS semana,
+    COUNT(DISTINCT CONCAT(userid, '-', session_id)) AS visitas_unicas_semana
+FROM prod.cx.fat_help_center_events
 WHERE event_category = 'vertical'
-  AND DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
-GROUP BY vertical
-ORDER BY total_acessos DESC;
+  AND NOT vertical IN ('nao_mapeado', 'outros')
+  AND DATE(date_created_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+GROUP BY vertical, DATE(DATE_TRUNC('week', DATE(date_created_br)))
+ORDER BY visitas_unicas_semana DESC;
 ```
 
-**Query 10.4 — Termos de pesquisa mais frequentes**
+**⚠️ Queries 10.5/10.6 abaixo usam `event_category` NÃO confirmados (`pesquisa`,
+`ajuda`) — validar antes de usar em produção:**
+
+**Query 10.5 — Termos de pesquisa mais frequentes (especulativo, não validado)**
 ```sql
 -- Substituir {COLUNA_TERMO} pelo nome real confirmado via preview_query
 SELECT
@@ -738,30 +798,40 @@ SELECT
     COUNT(*) AS total_buscas
 FROM `prod`.`cx`.`fat_help_center_events`
 WHERE event_category = 'pesquisa'
-  AND DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+  AND DATE(date_created_br) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
 GROUP BY {COLUNA_TERMO}, vertical
 ORDER BY total_buscas DESC
 LIMIT 15;
 ```
 
-**Query 10.5 — Volume genérico de entrada (`ajuda`) — topo absoluto do funil**
+**Como usar cada categoria no report:**
+- `artigo` → seção padrão "Central de Ajuda" do funil (top artigos + top verticais por acesso)
+- `vertical` → sinal de oportunidade de melhoria no Report Geral quando o volume for alto e desproporcional aos artigos existentes na mesma vertical — indica gap de conteúdo
+- `pesquisa`/`ajuda` (não confirmados) → se validados no futuro, mesma lógica de oportunidade de melhoria — não usar até confirmar
+
+---
+
+### 10B. NFHR — fórmula correta (visitas únicas ÷ transações)
+
+> ⚠️ **Correção Ago/2026:** NFHR usa **visitas únicas à Central de Ajuda** (Query 10.1
+> acima) como numerador, e **volume de transações (TX) da semana via `agg_overview`**
+> como denominador — confirmar que o cálculo está sempre nessa direção
+> (visitas/transações), não o inverso.
+
 ```sql
+-- Numerador: visitas únicas da semana (Query 10.1)
+-- Denominador: TX da mesma semana, via agg_overview
 SELECT
-    DATE(event_date)       AS data,
-    COUNT(DISTINCT userid) AS usuarios_unicos,
-    COUNT(*)               AS total_acessos
-FROM `prod`.`cx`.`fat_help_center_events`
-WHERE event_category = 'ajuda'
-  AND DATE(event_date) BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
-GROUP BY DATE(event_date)
-ORDER BY data;
+  SUM(CASE WHEN source = 'core' THEN tx END) AS transacoes_semana
+FROM prod.cx.agg_overview
+WHERE date BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}';
+
+-- NFHR = visitas_unicas_semana (Query 10.1) / transacoes_semana
 ```
 
-**Como usar cada categoria no report:**
-- `artigo` → seção padrão "Central de Ajuda" do funil (top artigos + % que avançou para bot)
-- `vertical` → sinal de oportunidade de melhoria no Report Geral quando o volume for alto e desproporcional aos artigos existentes na mesma vertical — indica gap de conteúdo
-- `pesquisa` → mesma lógica de oportunidade de melhoria: termos buscados sem artigo correspondente popular sinalizam conteúdo ausente
-- `ajuda` → usar apenas para o número absoluto de topo do funil, não segmentar por vertical (é o acesso antes de qualquer escolha)
+Calcular as duas partes separadamente (nunca num único JOIN que misture granularidade
+de evento com granularidade de transação) e dividir os dois totais já agregados por
+semana.
 
 ---
 
@@ -951,7 +1021,46 @@ ORDER BY total_tickets DESC;
 >    Ticket "bot inválido" ainda conta como população de bot para fins de retenção,
 >    porque ele efetivamente não foi atendido por humano.
 
-### Tabelas envolvidas
+### Taxa de Retenção do Bot — fórmula precisa (Ago/2026, fonte: validação direta com o time)
+
+> Esta é uma métrica diferente da distribuição N1/N2 (`sss_daily`, mais abaixo) —
+> `sss_daily` responde "quantos tickets caem em cada canal" (humano/bot/automação);
+> esta fórmula responde "das sessões do bot, qual % foi retida". As duas são
+> complementares, não substitutas.
+
+**Nível de sessão (`fat_botmaker_metrics`) — fonte mais precisa:**
+```sql
+SELECT
+  SUM(CASE WHEN flg_overflow = 0 AND flg_passive_abandonment = 0 THEN 1 ELSE 0 END)
+    / COUNT(*) AS taxa_retencao
+FROM prod.cx.fat_botmaker_metrics
+WHERE {filtros de período/vertical}
+```
+Retido = sessão que **não** transbordou (`flg_overflow = 0`) **e não** foi abandono
+passivo (`flg_passive_abandonment = 0`). **Abandono ativo conta como retido** —
+`flg_active_abandonment = 1` não entra na exclusão, porque o cliente interagiu de fato;
+só quem nem chegou a interagir (abandono passivo) é excluído do numerador.
+
+**Nível agregado (`agg_botmaker_metrics`) — equivalente em colunas somadas:**
+```sql
+SELECT
+  SUM(total_sessions - overflow - passive_abandonment) / SUM(total_sessions) AS taxa_retencao
+FROM prod.cx.agg_botmaker_metrics
+WHERE {filtros de período/stage}
+```
+
+**⚠️ `agg_botmaker_metrics` é aproximação, não fonte exata — validado por comparação
+direta:** as categorias (`overflow`, `active_abandonment`, `passive_abandonment`) podem
+se sobrepor quando somadas linha a linha em janelas maiores nesta tabela agregada —
+confirmado comparando contra `fat_botmaker_metrics` (nível de sessão, onde as 3 flags são
+mutuamente exclusivas e a soma bate exatamente). Para qualquer cálculo que exija precisão
+(ex: métrica oficial reportada, threshold de alerta), usar `fat_botmaker_metrics`.
+`agg_botmaker_metrics` serve bem para tendência agregada (série histórica, ranking por
+estágio), mas não é a primeira escolha quando o número exato importa.
+
+---
+
+
 
 | Tabela | Granularidade | Uso |
 |---|---|---|
