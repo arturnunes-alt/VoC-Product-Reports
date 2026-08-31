@@ -383,7 +383,7 @@
             "Pix CC"
           ],
           "tags_zendesk": [],
-          "nota": "Confirmado: nao existe tag propria de vertical para Pix CC em custom-field-values.md. Identificar via busca textual por cartao/cartão em reason_contact/root_cause de tickets tag pix-out (ver flag_pix_cartao em skill-databricks-mcp.md).",
+          "nota": "Confirmado: nao existe tag propria de vertical para Pix CC em custom-field-values.md. Identificar via qualquer mencao de cartao/cartão na TRANSCRICAO do ticket (sinal primario, Ago/2026) de tickets vertical pix::out, complementado por reason_contact/root_cause (sinal adicional) -- ver flag_pix_cartao em skill-databricks-mcp.md.",
           "aberturas_especificas": [
             "perfil_new_newnew_repeat"
           ]
