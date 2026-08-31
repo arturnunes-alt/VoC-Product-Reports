@@ -355,7 +355,7 @@ Semana 23–29/06 BRT: `created>=2026-06-23T03:00:00Z created<=2026-06-30T03:00:
 | `#melhoria-continua-verticais` | Boleto de Cobrança | `boleto_de_cobrança` | ⚠️ **`utilities`** (agregada) | Junto com Contas e Boletos no `agg_overview` — usar `dim_zendesk_tickets_summary` (`vertical='boleto de cobrança'`) para isolar |
 | `#melhoria-continua-verticais` | Recarga de Celular | `recarga_de_celular_vertical` | **`topup`** | Não estava documentado antes — mapeia limpo, sem agregação |
 | `#pixcc-home-raf-cx` | Pix (In/Out/Chaves) | `pix-in` `pix-out` `pix-chaves_pix` | ⚠️ **`pix`** (agregada, sem subtipo) | `agg_overview` não separa In/Out/Chaves — usar `dim_zendesk_tickets_summary` com `vertical LIKE 'pix::%'` para o subtipo |
-| `#pixcc-home-raf-cx` | Pix CC | não tem tag própria | ⚠️ **`pix`** (agregada) | Ver §5 — identificar via busca textual, não por vertical |
+| `#pixcc-home-raf-cx` | Pix CC | não tem tag própria | ⚠️ **`pix`** (agregada) | Ver §5 — identificar via menção de "cartão" na transcrição do ticket (`pix::out`), não por vertical |
 | `#pixcc-home-raf-cx` | RAF | `raf-indicado` `raf-indicador` | ⚠️ **`raf`** (agregada, sem subtipo) | `agg_overview` não separa Indicado/Indicador — usar `dim_zendesk_tickets_summary` com `vertical LIKE 'raf::%'` para o subtipo |
 | `#squad_loan_seguimento` | Empréstimo | `empréstimo_` `empréstimo_crédito_consignado` | `emprestimo` | OK — separada |
 | `#subacquirer-cx` | Tap to Pay | `tap_to_pay` | `tap to pay` | OK — separada |
