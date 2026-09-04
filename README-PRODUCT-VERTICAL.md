@@ -113,8 +113,13 @@ MCPs — únicas integrações permitidas
 EXECUÇÃO
 Execute as Fases 1 a 6 do SKILL-PRODUCT-VERTICAL.md em sequência, cobrindo as 26
 verticais na Análise Geral e as 9 verticais com NPS Transacional na Análise de NPS.
-Publicar seguindo à risca o protocolo de segurança da Fase 6 (merge de chaves, nunca
-substituir o objeto inteiro; reconferência pós-publicação obrigatória).
+Colete os dados da Fase 1 consolidando queries (uma execução por template, cobrindo
+todas as verticais — nunca uma query por vertical). Publique em lotes de 6-8 verticais
+por vez (Fase 6) — nunca tudo em uma única chamada de arturito_update_dashboard. Para
+cada lote: merge de chaves (nunca substituir o objeto inteiro), validação de sintaxe
+completa antes de publicar, e reconferência pós-publicação obrigatória antes de seguir
+para o próximo lote. Se qualquer lote falhar em uma validação, pare e reporte — nunca
+tente republicar automaticamente sem antes diagnosticar a causa.
 ```
 
 ### 3. Testar antes de ativar
@@ -123,8 +128,10 @@ Rodar **Run now** manualmente e conferir, antes de deixar agendado:
 - Se a janela de análise foi calculada corretamente (primeira execução: últimos 7 dias)
 - Se as 26 verticais receberam entrada em `VOC_ANALISE_GERAL` e as 9 com NPS receberam
   entrada em `VOC_ANALISE_NPS`
-- Se a reconferência pós-publicação (Fase 6, passo 6) de fato rodou e confirmou o painel
+- Se a publicação de fato ocorreu em lotes (não numa única chamada gigante) e se cada
+  lote passou pela reconferência pós-publicação (Fase 6) antes do próximo começar
 - Se nenhuma vertical de execuções anteriores foi perdida (merge, não replace)
+- Se o número de chamadas ao Databricks ficou na faixa esperada (~10-14, não 60+)
 
 ---
 
