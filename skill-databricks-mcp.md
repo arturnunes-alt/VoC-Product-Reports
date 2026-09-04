@@ -1265,3 +1265,68 @@ Usar para montar a série de 5 semanas de retenção e CSAT do bot (agregar por 
   têm alguma correspondência direta com as verticais do `canais.json` antes de segmentar
   retenção por produto — são three dimensões de tema distintas, não necessariamente
   equivalentes entre si.
+
+---
+
+## 13. `prod.cx.fat_buzzmonitor_posts` — Redes Sociais (Buzzmonitor, adicionado Ago/2026)
+
+Base governada de monitoramento de redes sociais (Instagram, Facebook, LinkedIn,
+TikTok, Google My Business, entre outros) — posts, comentários e respostas da empresa,
+com sentimento já classificado.
+
+> ⚠️ **`post_related_ticket` NÃO é o ID de um ticket Zendesk** — apesar do nome,
+> confirmado empiricamente que é um identificador interno do próprio Buzzmonitor
+> (formato tipo Elasticsearch, ex: `80ymxJ0BAftLTL-7s8Oa`). Join direto com
+> `dim_zendesk_tickets_summary.id_ticket` retorna zero linhas. **Não existe hoje uma
+> chave de cruzamento direta e confiável entre um post/comentário e um ticket
+> Zendesk** — o vínculo com vertical/squad precisa ser feito por busca de palavra-chave
+> no conteúdo (mesma lógica já usada para `knowledge-base-reason` → vertical, ver §5.6),
+> não por join.
+
+| Campo | Descrição |
+|---|---|
+| `post_id` | ID do post original — comentários e respostas do mesmo post compartilham este valor |
+| `type` | Tipo da interação. Valores confirmados: `post` (o post original), `comment`, `comment_reply`, `reply`, `answer`, `mention`, `comment_from_mention`, `no_reply`, `review`. ⚠️ **Inconsistência de maiúscula/minúscula confirmada** (`comment` e `COMMENT` coexistem) — sempre usar `LOWER(type)` no filtro |
+| `content` | Texto do post/comentário/resposta |
+| `sentiment` | `positive`, `neutral`, `negative` — já classificado |
+| `service` | Rede social: `instagram`, `facebook`, `linkedin_updates`, `tiktok`, `google_my_business`, etc. |
+| `created_at` | Timestamp real (usar este campo para filtro de data — não `date`) |
+| `date` | ⚠️ Armazenado como inteiro tipo `20260427210330` (`AAAAMMDDHHMMSS`), não é `DATE`/`TIMESTAMP` nativo — evitar para filtro, preferir `created_at` |
+| `author_name`, `author_followers` | Autor do post/comentário — dados de PII, aplicar mesma regra de segurança (não expor CPF/telefone/e-mail se aparecer no texto) |
+| `likes`, `shares`, `replies`, `engagement`, `reach`, `impressions` | Métricas de engajamento do post |
+| `categories` | Categorização temática automática (ex: "Economia & Finanças") — **genérica de marketing, não mapeia para vertical de produto** |
+| `solved` | Flag de resolução (se o Buzzmonitor/equipe marcou como resolvido) |
+
+**Query — comentários mencionando um tema/vertical (busca por palavra-chave no conteúdo):**
+```sql
+SELECT post_id, type, service, sentiment, content, created_at
+FROM prod.cx.fat_buzzmonitor_posts
+WHERE created_at BETWEEN '{DATA_INICIO}' AND '{DATA_FIM}'
+  AND LOWER(type) IN ('comment', 'comment_reply', 'reply', 'answer', 'comment_from_mention')
+  AND (LOWER(content) LIKE '%{palavra-chave-1}%' OR LOWER(content) LIKE '%{palavra-chave-2}%')
+ORDER BY created_at DESC;
+```
+
+**Query — buscar o post original de um comentário encontrado acima (contexto):**
+```sql
+SELECT post_id, service, content, likes, shares, engagement, created_at
+FROM prod.cx.fat_buzzmonitor_posts
+WHERE post_id = '{POST_ID_DO_COMENTÁRIO}'
+  AND LOWER(type) = 'post';
+```
+
+**Tabela de palavras-chave por vertical (reutilizar a mesma lista de
+`skill-zendesk-cx.md` §8, adaptada para busca livre em texto, não tag exata):**
+
+| Vertical | Palavras-chave sugeridas |
+|---|---|
+| Cartão de Crédito | `cartão`, `cartao`, `fatura`, `anuidade`, `limite` |
+| Pix | `pix` |
+| Empréstimo | `empréstimo`, `emprestimo`, `consignado` |
+| CDB / Rendimento CDI | `cdb`, `rendimento`, `cdi` |
+| Tap to Pay | `tap to pay`, `tap ton`, `maquininha` |
+| Transporte | `recarga de transporte`, `bilhete único`, `vem`, `urbs` |
+| Conta/Carteira Desativada | `conta desativada`, `carteira bloqueada`, `bloquearam` |
+
+⚠️ Lista inicial, não exaustiva — expandir conforme temas reais encontrados nas
+primeiras execuções.
