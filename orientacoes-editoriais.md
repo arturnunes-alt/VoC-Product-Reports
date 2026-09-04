@@ -908,3 +908,22 @@ volume, ou que crescem consistentemente (>30% semana a semana, 2+ semanas seguid
 mesmo ainda pequenos em volume absoluto. Incluir os confirmados na seção "Destaques e
 Oportunidades", sinalizando que é tendência emergente, não volume absoluto. Ver
 metodologia completa em `SKILL.md` Fase 3.
+
+**Redes Sociais (Ago/2026, obrigatório em todo report de produto):** buscar posts e
+comentários relacionados à vertical via `prod.cx.fat_buzzmonitor_posts`
+(`skill-databricks-mcp.md` §13) — busca por palavra-chave no conteúdo, não join com
+Zendesk (não existe chave confiável). Incluir no report como bloco objetivo:
+
+```
+*Redes Sociais* 📱
+• [Post 1 — rede social, breve contexto]: [N] comentários, sentimento predominante
+  [positivo/negativo/neutro]
+  — "[trecho de comentário representativo 1]"
+  — "[trecho de comentário representativo 2]"
+• [Post 2, se houver outro relevante — mesmo formato]
+```
+
+Selecionar só posts com sinal relevante (sentimento negativo concentrado, ou volume de
+comentários fora do padrão) — não listar todo post encontrado na busca. Máximo 2-3
+posts por report, cada um com no máximo 2-3 comentários representativos. Se a busca não
+encontrar nada relevante na janela, omitir a seção inteira — não forçar conteúdo vazio.
