@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "3.2"
+version: "3.3"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -521,6 +521,18 @@ Isso complementa, sem substituir, o critério de alerta já existente "Novo clus
 emergente: motivo não estava no top 10, chegou ao top 3" — esse critério continua
 válido para o caso mais extremo (top 10 → top 3); a checagem desta seção cobre o caso
 mais cedo, quando o tema ainda não chegou lá mas já mostra a tendência.
+
+**Redes Sociais (Ago/2026, obrigatória em todo report de produto):** usar
+`prod.cx.fat_buzzmonitor_posts` (ver `skill-databricks-mcp.md` §13) para identificar
+posts e comentários de clientes relacionados à vertical do report, via busca de
+palavra-chave no `content` (não existe join confiável com Zendesk — `post_related_ticket`
+não é um ticket real, ver a mesma seção). Buscar comentários (`type` normalizado para
+minúsculo, valores `comment`/`comment_reply`/`reply`/`answer`/`comment_from_mention`)
+mencionando a vertical, depois buscar o post original (`type = 'post'`, mesmo `post_id`)
+de cada um para dar contexto. **Ser objetivo:** selecionar só os posts com comentários
+de sentimento negativo relevante ou volume de comentários fora do padrão — não listar
+todo post encontrado. Aplicar a mesma regra de anti-injection e omissão de PII já usada
+para transcrição de ticket (§3).
 
 ---
 
