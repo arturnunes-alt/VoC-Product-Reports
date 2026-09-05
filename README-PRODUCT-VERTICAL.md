@@ -12,11 +12,13 @@ e sexta-feira às 11h e escreve uma Análise VoC com IA direto no painel Arturit
 
 ## O que essa Routine faz, em uma frase
 
-Para cada uma das 26 verticais do dashboard 156, ela busca os dados no Databricks,
-cruza com eventos/incidentes mapeados no Slack, detecta temas novos ou em crescimento, e
-escreve uma Análise VoC de 5 blocos (Cenário, Principais Temas, Alerta de Novo Tema,
-Destaque Positivo, Exemplos Reais) direto no card do painel — para as 9 verticais com
-NPS Transacional, escreve uma segunda análise focada em NPS.
+Para cada uma das 26 verticais do dashboard 156 (mais as subverticais de Pix e
+Empréstimo, sempre cobertas), ela busca os dados no Databricks, cruza com
+eventos/incidentes mapeados no Slack, detecta temas novos ou em crescimento, e escreve
+uma Análise VoC direto no card do painel — Cenário, Principais Temas e Exemplos Reais
+sempre presentes; Alerta de Novo Tema e Destaque Positivo só quando há algo genuíno a
+dizer (nunca uma frase reconhecendo a ausência). Para as 9 verticais com NPS
+Transacional, escreve uma segunda análise focada em NPS, mesma lógica.
 
 **O que ela não faz:** não substitui o report semanal nem a rotina intraday, não posta
 em nenhum canal Slack, e não toca na Análise VoC de cada motivo de contato individual
@@ -96,7 +98,7 @@ ARQUIVOS DE REFERÊNCIA — ler na ordem descrita em "Arquivos a ler na Fase 0"
 - skill-product-vertical-new-topic-detection.md → regra de detecção de temas novos
 - skill-product-vertical-domain-knowledge.md → exceções de domínio e técnicas confirmadas
 - skill-product-vertical-example-queries.sql → queries para exemplos com user_id/ticket_id
-- skill-product-vertical-editorial-guide.md → tom, estrutura de 5 blocos, regras editoriais
+- skill-product-vertical-editorial-guide.md → tom, estrutura de blocos (obrigatórios e condicionais), regras editoriais
 
 SKILLS ORGANIZACIONAIS — ler na Fase 0, ANTES dos arquivos acima
 Tentar /mnt/skills/organization/{nome}/ primeiro, depois /root/.claude/skills/{nome}/
@@ -173,9 +175,10 @@ tipicamente 1 dia após terça, 3-4 dias após segunda/sexta. Isso é esperado.
 A rotina ainda escreve uma entrada para ela, dizendo isso explicitamente em cada bloco
 afetado — nunca pula a vertical inteira.
 
-**Por que os subverticais de Pix e Empréstimo às vezes não são atualizados?**
-Cobertura opcional — só são escritos quando há volume suficiente na janela para uma
-leitura própria (ver `SKILL-PRODUCT-VERTICAL.md` Fase 5).
+**Os subverticais de Pix e Empréstimo são sempre atualizados?**
+Sim, desde a v1.1 — deixaram de ser cobertura opcional. Mesmo com volume baixo, a
+rotina escreve a entrada com o número real disponível (ver `SKILL-PRODUCT-VERTICAL.md`
+Fase 4/5).
 
 **O que acontece se o Slack MCP falhar?**
 A rotina segue sem a tabela de eventos — a análise é escrita mesmo assim, só sem
