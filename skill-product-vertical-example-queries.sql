@@ -22,7 +22,7 @@ WHERE flg_human = true AND flg_invalid_bot = false AND flg_retention_bot = false
   AND reason_contact = :motivo
   AND created_at_br >= :inicio_janela_atual AND created_at_br < :fim_janela_atual
 ORDER BY created_at_br DESC
-LIMIT 5;
+LIMIT 8;
 
 -- ═══ 2) Exemplo com contexto qualitativo (resumo do problema/solução), por motivo ═══
 -- Mesma vertical/motivo, mas puxando de fat_tickets_transcription_summary para ter o
@@ -39,7 +39,7 @@ WHERE vertical = :vertical_raw
   AND reason_contact = :motivo
   AND date_created_at >= :inicio_janela_atual AND date_created_at < :fim_janela_atual
 ORDER BY date_created_at DESC
-LIMIT 5;
+LIMIT 8;
 
 -- ═══ 3) Exemplo de feedback de NPS Transacional (Análise de NPS), por classe ═══
 -- Ajustar :action_name_pattern (o valor bruto de action_name da vertical/subvertical —
@@ -60,10 +60,10 @@ WHERE survey_type = 'transacional' AND quest_level = 'main'
   AND feedback IS NOT NULL AND feedback <> ''
   AND answer_date >= :inicio_janela_atual AND answer_date < :fim_janela_atual
 ORDER BY answer_date DESC
-LIMIT 5;
+LIMIT 8;
 
 -- Em todas as três: pegar sempre os exemplos mais recentes dentro da janela (ORDER BY DESC),
--- e escolher manualmente, entre os 5 retornados, o(s) 1-3 mais representativos do que está
+-- e escolher manualmente, entre os 8 retornados, os 4-5 mais representativos do que está
 -- sendo dito no texto da análise (não necessariamente o primeiro da lista) — ver Fase 4/5
 -- da SKILL.md para o número de exemplos esperado por análise.
 
@@ -90,4 +90,4 @@ WHERE t.flg_human = true AND t.flg_invalid_bot = false AND t.flg_retention_bot =
       COALESCE(s.customer_issue,''), COALESCE(s.support_solution,''))), 'cartao|cartão')
   AND t.created_at_br >= :inicio_janela_atual AND t.created_at_br < :fim_janela_atual
 ORDER BY t.created_at_br DESC
-LIMIT 5;
+LIMIT 8;
