@@ -54,7 +54,9 @@ Segunda, terça e sexta-feira, às 11h, esta rotina:
    `pe-consolidado-voc-analise`), e para as **9 verticais com NPS Transacional** (Pix,
    Cartão de Crédito, Empréstimo, Transporte, Contas e Boletos, Link de Pagamento,
    Recarga de Celular, Tap to Pay, CDB/Investimentos), também uma Análise VoC de NPS
-   (card `pe-nps-voc-analise`) — 5 blocos fixos cada, ver Fase 4/5.
+   (card `pe-nps-voc-analise`) — blocos obrigatórios e condicionais (nunca frase de
+   preenchimento), ver Fase 4/5. Pix e Empréstimo sempre recebem subverticais próprias
+   também, nas duas análises.
 5. Publica essas análises **em lotes de 6-8 verticais** (nunca tudo de uma vez),
    tocando apenas as variáveis `VOC_ANALISE_GERAL` e `VOC_ANALISE_NPS` já existentes no
    `js` do painel — nunca reescreve html, css, o resto do js, ou o campo `queries`.
@@ -187,32 +189,49 @@ Feedback, para a Análise de NPS). Excluir sempre "Atendimento não prestado" de
 checagem (`skill-product-vertical-domain-knowledge.md` §1). É esperado e correto que a maioria das execuções
 não encontre nenhum alerta em várias verticais.
 
-## Fase 4 — Escrever a Análise VoC Geral (26 verticais)
+## Fase 4 — Escrever a Análise VoC Geral (26 verticais + subverticais de Pix/Empréstimo)
 
-Ver `skill-product-vertical-editorial-guide.md` para tom, estrutura de 5 blocos, regras
-de uso de identificadores, e `skill-product-vertical-domain-knowledge.md` para as exceções de
+Ver `skill-product-vertical-editorial-guide.md` para tom, estrutura de blocos (três
+obrigatórios, dois condicionais — não são mais 5 fixos sempre), regras de uso de
+identificadores, e `skill-product-vertical-domain-knowledge.md` para as exceções de
 domínio a respeitar (perfil New/Repeat em 4 verticais específicas, Central de Ajuda
 mensal, 3 categorias de bloqueio em Conta/Carteira Desativada, retenção de bot líquida
 de abandono, verticais agregadas em `agg_overview`).
 
-Para cada vertical, escrever os 5 blocos (Cenário, Principais Temas, Alerta de Novo
-Tema, Destaque Positivo, Exemplos Reais) cobrindo:
+Para cada vertical (e para as 4 subverticais de Pix/Empréstimo, ver abaixo), escrever:
 
-- **Cenário**: evolução de Acessos Central / Bot Retido / Humano / TX / AU / Churn (os
-  que existirem para a vertical) no período vs. o período imediatamente anterior de
-  mesma duração, cruzando com eventos da Fase 2 quando a janela bater.
-- **Principais Temas**: os 2-3 motivos de contato de maior volume no período (excluindo
-  "Atendimento não prestado").
-- **Alerta de Novo Tema**: resultado da Fase 3.
-- **Destaque Positivo**: algo favorável no período (queda de um motivo problemático,
-  melhoria de causa-raiz, evento com impacto positivo mapeado, etc.) — se genuinamente
-  não houver nada digno de nota, dizer isso em vez de forçar um destaque artificial.
-- **Exemplos Reais**: 2-3 casos com `id_ticket` e `user_id`, tirados das queries ad-hoc
-  da Fase 1, relacionados aos temas citados nos blocos acima.
+- **Cenário** (sempre presente): evolução de Acessos Central / Bot Retido / Humano /
+  TX / AU / Churn (os que existirem para a vertical) no período vs. o período
+  imediatamente anterior de mesma duração, cruzando com eventos da Fase 2 quando a
+  janela bater. Quando uma variação precisar de explicação, fundamentar na fala real
+  do cliente extraída da transcrição — não só no número (ver guia editorial).
+- **Principais Temas** (sempre presente): os 2-3 motivos de contato de maior volume no
+  período (excluindo "Atendimento não prestado"), cada um explicando a dúvida ou
+  quebra de expectativa real por trás do motivo, com fala do cliente parafraseada —
+  não apenas o nome do motivo e o volume.
+- **Alerta de Novo Tema** (só se a Fase 3 confirmou algo): resultado da Fase 3. Se não
+  houver confirmação, omitir o bloco inteiro — não escrever que nada foi encontrado.
+- **Destaque Positivo** (só se há algo genuinamente favorável): queda de um motivo
+  problemático, melhoria de causa-raiz, evento com impacto positivo mapeado, etc. Se
+  genuinamente não houver nada digno de nota, omitir o bloco inteiro.
+- **Exemplos Reais** (sempre presente): **4-5 casos** com `id_ticket` e `user_id`,
+  tirados das queries ad-hoc da Fase 1, relacionados aos temas citados nos blocos
+  acima — priorizar exemplos que ilustrem motivos diferentes, não variações do mesmo
+  caso.
+
+**Subverticais de Pix e Empréstimo — sempre escritas, não mais opcionais**: além da
+entrada da vertical (`PIX`, `EMPRESTIMO`), sempre escrever também
+`PIX::Pix Out - Wallet`, `PIX::Pix Out - Cartão`, `EMPRESTIMO::Geral` e
+`EMPRESTIMO::Consignado` nesta fase. Se o volume de uma subvertical for baixo, reportar
+o número real e o conteúdo dos poucos casos existentes (nunca uma frase genérica sobre
+falta de dados — ver guia editorial). Para `PIX::Pix Out - Cartão`: usar a
+`flag_pix_cartao` (`skill-product-vertical-domain-knowledge.md` §7), não
+`reason_contact`/`root_cause` isolados.
 
 **Verticais de baixo volume**: se uma vertical não tiver dado suficiente no período para
-uma leitura confiável em algum bloco, dizer isso diretamente nesse bloco (não pular a
-vertical inteira — cada uma das 26 recebe uma entrada nesta execução).
+uma leitura confiável em algum bloco, reportar o número real disponível (mesmo que
+pequeno) em vez de uma frase genérica — cada uma das 26 verticais (mais as 4
+subverticais) recebe uma entrada nesta execução.
 
 **Verticais sem responsável CXM mapeado** (ver tabela de correspondência em
 `skill-product-vertical-events-mapping.md`): não afeta a redação do texto em si — a rotina escreve a
@@ -220,23 +239,28 @@ análise normalmente para as 26 verticais, o mapeamento de responsável só impo
 algum momento futuro, esta rotina passar a notificar alguém (hoje ela só escreve no
 painel, não notifica).
 
-## Fase 5 — Escrever a Análise VoC de NPS Transacional (9 verticais)
+## Fase 5 — Escrever a Análise VoC de NPS Transacional (9 verticais + subverticais)
 
-Mesma estrutura de 5 blocos, mesma referência editorial, mas com o foco do NPS:
+Mesma estrutura de blocos (três obrigatórios, dois condicionais), mesma referência
+editorial, mas com o foco do NPS:
 
 - **Cenário**: evolução do NPS Transacional no período vs. o anterior.
 - **Principais Temas**: temas mais mencionados entre promotores e entre detratores
-  (`NPS Categoria Feedback Semanal` + `NPS Frases Chave Periodo`).
-- **Alerta de Novo Tema** / **Destaque Positivo** / **Exemplos Reais**: mesma lógica da
-  Fase 4, adaptada à fonte de NPS.
+  (`NPS Categoria Feedback Semanal` + `NPS Frases Chave Periodo`), explicando a dúvida
+  ou expectativa por trás de cada tema com fala real do cliente (feedback
+  parafraseado), não só o nome da categoria.
+- **Alerta de Novo Tema** / **Destaque Positivo**: só quando há achado genuíno — omitir
+  o bloco quando não há (mesma regra da Fase 4).
+- **Exemplos Reais**: 4-5, mesma lógica da Fase 4, adaptada à fonte de NPS.
 
-**Subverticais (Pix, Empréstimo)**: cobertura opcional nesta execução — só escrever a
-entrada com chave composta (`PIX::Pix Out - Wallet`, `PIX::Pix Out - Cartão`,
-`EMPRESTIMO::Geral`, `EMPRESTIMO::Consignado`) quando houver volume de respostas
-suficiente no período para uma leitura própria (sugestão: ao menos ~15-20 respostas com
-feedback no período). A chave sem subvertical (`PIX`, `EMPRESTIMO`) é sempre
-obrigatória. Para `PIX::Pix Out - Cartão`: usar a `flag_pix_cartao`
-(`skill-product-vertical-domain-knowledge.md` §7), não `reason_contact`/`root_cause` isolados.
+**Subverticais (Pix, Empréstimo) — sempre escritas, não mais opcionais**: assim como na
+Fase 4, sempre escrever a entrada com chave composta (`PIX::Pix Out - Wallet`,
+`PIX::Pix Out - Cartão`, `EMPRESTIMO::Geral`, `EMPRESTIMO::Consignado`) nesta fase
+também. Se o volume de respostas for baixo, reportar o número real e o conteúdo dos
+poucos feedbacks existentes em vez de pular a subvertical ou escrever uma frase vazia
+sobre a falta de dados. Para `PIX::Pix Out - Cartão`: usar a `flag_pix_cartao`
+(`skill-product-vertical-domain-knowledge.md` §7), não `reason_contact`/`root_cause`
+isolados.
 
 ## Fase 6 — Publicar em lotes, com segurança (o passo mais importante)
 
@@ -276,7 +300,8 @@ continuam valendo, e só o lote problemático precisa ser investigado.
      do objeto `SUBVERTS` (`Pix Out - Wallet`, `Pix Out - Cartão`, `Geral`,
      `Consignado`).
    - **Formato de cada valor**: `{texto: '<html>', atualizado_em: 'DD/MM/AAAA'}` — o
-     `texto` é o HTML dos 5 blocos (Fase 4/5); `atualizado_em` é a data de hoje.
+     `texto` é o HTML dos blocos (Fase 4/5, número variável — ver guia editorial);
+     `atualizado_em` é a data de hoje.
 4. Validar o `js` resultante **antes de publicar**: `node --check` (sintaxe) e conferir
    que o arquivo termina com `})();` (o fechamento do IIFE) — essa checagem específica
    existe por causa do incidente citado acima e nunca deve ser pulada. Como o texto tem
@@ -321,8 +346,10 @@ simplesmente mantêm o `atualizado_em` de sua última análise bem-sucedida até
 - Não usar `__ARTURITO_DATA__` como fonte de dados.
 - Não rodar a mesma query uma vez por vertical — cada query roda uma vez por execução,
   cobrindo todas as verticais; filtrar em memória (ver Fase 1).
-- Não tentar publicar as 26+9(+4) verticais em uma única chamada de
-  `arturito_update_dashboard` — sempre em lotes de 6-8 (Fase 6).
+- Não tentar publicar as ~30 entradas da Análise Geral (26 verticais + 4
+  subverticais de Pix/Empréstimo) e as ~13 da Análise de NPS (9 verticais + 4
+  subverticais) em uma única chamada de `arturito_update_dashboard` — sempre em lotes
+  de 6-8 (Fase 6).
 - Não chamar `arturito_update_dashboard` com um `js` que falhou em qualquer validação
   (sintaxe, fechamento `})();`, teste no Chromium) — parar e diagnosticar, nunca
   publicar mesmo assim torcendo para dar certo.
@@ -350,4 +377,4 @@ simplesmente mantêm o `atualizado_em` de sua última análise bem-sucedida até
 - `skill-product-vertical-new-topic-detection.md` — regra validada em produção para detecção de temas novos (Fase 3)
 - `skill-product-vertical-domain-knowledge.md` — exceções de domínio e técnicas confirmadas (fórmulas, agregações, flag Pix CC, evolução pós-evento) — usar em todas as fases
 - `skill-product-vertical-example-queries.sql` — queries ad-hoc para exemplos com user_id/ticket_id (Fases 1, 4, 5)
-- `skill-product-vertical-editorial-guide.md` — tom, estrutura de 5 blocos e regras editoriais (Fases 4 e 5)
+- `skill-product-vertical-editorial-guide.md` — tom, estrutura de blocos (obrigatórios e condicionais, sem frase de preenchimento) e regras editoriais (Fases 4 e 5)
