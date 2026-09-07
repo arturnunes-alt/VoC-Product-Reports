@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "3.4"
+version: "3.5"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -196,6 +196,47 @@ de retry antes de escalar, seção "TRATAMENTO DE FALHAS"). Confirmada a falha r
 Nunca abortar a execução inteira só porque o gateway primário falhou, se o fallback
 autorizado estiver funcional — o objetivo desta regra é evitar que os 20 reports
 deixem de ser gerados por indisponibilidade pontual de um único gateway.
+
+### MODO DEGRADADO — SOMENTE DATABRICKS (Ago/2026)
+
+Se **nenhum dos dois** caminhos de Zendesk (primário + fallback) estiver disponível
+após 2 tentativas confirmadas: **não abortar a execução.** A maior parte do pipeline já
+usa Databricks como fonte oficial mesmo em condições normais — o Zendesk ao vivo hoje
+só é usado para (a) validação pontual de tag de vertical e (b) leitura de corpo de
+ticket em tempo real, e as duas têm equivalente direto no Databricks.
+
+**O que continua funcionando normalmente (já é Databricks, não muda nada):**
+- NPS, CSAT, volume, retenção de bot, Central de Ajuda, bugs, TMR/TMO — tudo via
+  `agg_overview`/`cx-product-insights` (Fase 2), sem qualquer dependência de Zendesk ao
+  vivo
+- Rankings de motivo de contato e causa raiz — via `agg_overview`, mesma fonte de
+  sempre
+- Flag Pix CC (`flag_pix_cartao`) — via `fat_tickets_transcription_summary`, tabela
+  Databricks, não Zendesk ao vivo (ver `skill-databricks-mcp.md` §"Flag Pix via Cartão")
+
+**O que substitui a etapa que dependia de Zendesk ao vivo:**
+- **Leitura qualitativa (3-5 tickets representativos por causa raiz, Fase 3):**
+  usar `prod.cx.fat_tickets_transcription_summary` (`customer_issue`,
+  `customer_complaint`, `support_solution`, `unresolved_reason` — já documentado em
+  `skill-databricks-mcp.md` §3) filtrando por `id_ticket` dos tickets identificados via
+  `dim_zendesk_tickets_summary`, em vez de puxar o corpo ao vivo via
+  `zendesk___zendesk`. Mesma amostragem (sentimento negativo > canal regulatório >
+  cronológico reverso), mesma regra de anti-injection e omissão de PII.
+- **Validação pontual de tag de vertical:** usar `SELECT DISTINCT vertical FROM
+  dim_zendesk_tickets_summary WHERE ...` via Databricks, em vez de busca ao vivo.
+- **Redes Sociais (Buzzmonitor, §13 de `skill-databricks-mcp.md`):** já é Databricks,
+  não afetado por este modo.
+
+**O que fica indisponível neste modo (aceitar a lacuna, não tentar compensar):**
+- Dados de tickets criados literalmente nas últimas horas antes da execução (o
+  Databricks tem defasagem T-1) — irrelevante para o pipeline semanal, que sempre
+  fecha o período até domingo 23:59, dias antes da execução de segunda.
+
+**Sinalização:** registrar na notificação interna que a execução rodou em modo
+degradado (Zendesk indisponível nos dois caminhos). **Não incluir nenhuma menção disso
+no texto dos reports enviados às squads** — publicar a análise normalmente com os dados
+disponíveis, sem nota de "dados parciais" ou "Zendesk indisponível" visível para quem
+recebe o report.
 
 ### Filtros obrigatórios em toda query Zendesk
 Incluir em TODAS as buscas, sem exceção:
@@ -1074,8 +1115,10 @@ Se um dado não pôde ser calculado (MCP offline, query sem resultado, métrica 
 ### MCP indisponível
 - Zendesk AgentCore offline → tentar de novo uma vez; se a falha persistir de forma
   confirmada, usar o fallback autorizado `MCP-Proxy-RecargaPay` (ver seção "MCP primário
-  — Zendesk" acima) para toda a execução. Só omitir a análise qualitativa e usar apenas
-  dados estruturados do Databricks se **os dois** caminhos de Zendesk falharem.
+  — Zendesk" acima) para toda a execução. Se **os dois** caminhos de Zendesk falharem,
+  seguir o "MODO DEGRADADO — SOMENTE DATABRICKS" acima — não é mais motivo para abortar
+  a execução nem para só reduzir a análise qualitativa; o pipeline continua quase
+  inteiro, com a leitura qualitativa substituída por `fat_tickets_transcription_summary`.
 - Databricks offline → omitir seções de NPS, CSAT numérico, perfil de cliente e funil de Central de Ajuda.
 - Slack MCP offline → omitir seção "Destaques da semana". Se envio falhar, encerrar Routine.
 
