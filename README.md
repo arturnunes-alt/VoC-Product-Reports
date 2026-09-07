@@ -101,12 +101,24 @@ Routine A (Rascunho) de um pipeline de duas etapas, com Claude Sonnet 5.
 MODO=RASCUNHO
 
 VALIDAÇÃO INICIAL (antes da Fase 0)
-Confirme que as tools dos 3 MCPs abaixo estão de fato registradas nesta sessão
-(busque por nome exato de cada uma). Se qualquer uma não retornar tools utilizáveis
-— mesmo que o servidor responda a resources —, NÃO prossiga com dados parciais ou
-inventados: encerre a execução, registre exatamente quais MCPs falharam e notifique.
-Isso vale especialmente para o Slack MCP, já que sem ele não há como entregar nem
-um report de fallback.
+Confirme que as tools dos 3 MCPs abaixo estão de fato registradas nesta sessão (busque
+por nome exato de cada uma).
+
+⚠️ Zendesk (primário + fallback) segue uma regra diferente dos outros dois — ver
+"MODO DEGRADADO — SOMENTE DATABRICKS" no SKILL.md. Resumo: se **nenhum dos dois**
+caminhos de Zendesk (AgentCore nem MCP-Proxy-RecargaPay) retornar tools utilizáveis após
+2 tentativas, **não aborte a execução** — prossiga em modo degradado, usando só
+Databricks para tudo (volume, NPS, CSAT, rankings de motivo/causa raiz, retenção de bot,
+Central de Ajuda e a leitura qualitativa via `fat_tickets_transcription_summary`/
+`fat_tickets_transcription`, que substituem a leitura ao vivo de ticket). Isso cobre a
+maior parte do pipeline normalmente — Zendesk ao vivo só é usado hoje para validação
+pontual de tag e leitura de corpo de ticket em tempo real, ambas substituíveis por
+Databricks.
+
+Databricks e Slack continuam sendo bloqueantes de verdade: se qualquer um dos dois não
+retornar tools utilizáveis, aí sim encerre a execução sem dados parciais ou inventados,
+registre exatamente o que falhou e notifique. Isso vale especialmente para o Slack MCP,
+já que sem ele não há como entregar nenhum report, nem o degradado.
 
 Execute o pipeline completo de reports VoC conforme as instruções do SKILL.md deste
 repositório, respeitando o MODO=RASCUNHO definido na seção "MODO DE EXECUÇÃO" do SKILL.md.
@@ -207,10 +219,18 @@ Routine B (Validação e Publicação) de um pipeline de duas etapas, com Claude
 MODO=VALIDACAO
 
 VALIDAÇÃO INICIAL (antes da Fase 0)
-Confirme que as tools dos 3 MCPs abaixo estão de fato registradas nesta sessão. Se
-qualquer uma não retornar tools utilizáveis, NÃO prossiga: encerre a execução, registre
-quais MCPs falharam e notifique. Isso é ainda mais crítico nesta Routine, já que ela
-publica a versão FINAL nos canais reais das squads.
+Confirme que as tools dos 3 MCPs abaixo estão de fato registradas nesta sessão.
+
+⚠️ Mesma regra da Routine A para Zendesk: se **nenhum dos dois** caminhos (AgentCore nem
+MCP-Proxy-RecargaPay) retornar tools utilizáveis após 2 tentativas, **não aborte** —
+prossiga em modo degradado, só com Databricks (ver "MODO DEGRADADO — SOMENTE DATABRICKS"
+no SKILL.md). Isso é ainda mais relevante aqui: sem isso, a squad simplesmente não recebe
+report nenhum naquela semana, mesmo com dado suficiente disponível via Databricks para
+publicar algo com qualidade.
+
+Databricks e Slack continuam bloqueantes de verdade — se qualquer um dos dois falhar,
+encerre a execução, registre o que falhou e notifique. Isso é crítico nesta Routine, já
+que ela publica a versão FINAL nos canais reais das squads.
 
 Execute o pipeline completo de reports VoC conforme as instruções do SKILL.md deste
 repositório, respeitando o MODO=VALIDACAO definido na seção "MODO DE EXECUÇÃO" do SKILL.md.
