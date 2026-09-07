@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "3.3"
+version: "3.4"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -173,9 +173,29 @@ alterado, sem precisar mudar a configuração padrão da Routine.
 - Calcular as datas corretas a partir da data de execução da Routine
 - Formato do período para títulos: `Semana NN · DD/MM–DD/MM/YYYY`
 
-### MCP primário — Zendesk
-Usar exclusivamente **[TEST] MCP Gateway AWS AgentCore** via tool `zendesk___zendesk`
-para todas as queries de tickets Zendesk.
+### MCP primário — Zendesk (com fallback autorizado, Ago/2026)
+
+**Primário:** **[TEST] MCP Gateway AWS AgentCore** via tool `zendesk___zendesk` — usar
+para todas as queries de tickets Zendesk, salvo a exceção abaixo.
+
+**⚠️ Fallback autorizado — `MCP-Proxy-RecargaPay` (tool `zendesk`):** usar **somente**
+se o primário falhar de forma confirmada — erro de conexão (502, `SdkHttpError`,
+timeout) reproduzido em **pelo menos 2 tentativas**, não apenas ausência de tool
+detectada na primeira checagem (isso pode ser variação de sessão, ver princípio geral
+de retry antes de escalar, seção "TRATAMENTO DE FALHAS"). Confirmada a falha real:
+- Usar o proxy para **toda** a execução, não alternar entre os dois no meio
+- Sinalizar isso na notificação interna ("Zendesk via fallback MCP-Proxy-RecargaPay
+  nesta execução, gateway primário com falha de conexão confirmada")
+- Não é necessário sinalizar isso publicamente nos reports enviados às squads — mesma
+  lógica de "informação de infraestrutura interna, não acionável pelo destinatário" já
+  aplicada a outros fallbacks desta Routine
+- Este caminho pode ter escopo/identidade de permissão diferente do primário — se
+  alguma query retornar erro de permissão específico do proxy (não visto no primário),
+  registrar isso à parte, não tratar como o mesmo tipo de falha
+
+Nunca abortar a execução inteira só porque o gateway primário falhou, se o fallback
+autorizado estiver funcional — o objetivo desta regra é evitar que os 20 reports
+deixem de ser gerados por indisponibilidade pontual de um único gateway.
 
 ### Filtros obrigatórios em toda query Zendesk
 Incluir em TODAS as buscas, sem exceção:
@@ -1052,7 +1072,10 @@ Se um dado não pôde ser calculado (MCP offline, query sem resultado, métrica 
 - Registrar internamente para o checklist de conclusão
 
 ### MCP indisponível
-- Zendesk AgentCore offline → omitir análise qualitativa (causas raiz sem insight de body). Usar apenas dados estruturados do Databricks para volume e motivos.
+- Zendesk AgentCore offline → tentar de novo uma vez; se a falha persistir de forma
+  confirmada, usar o fallback autorizado `MCP-Proxy-RecargaPay` (ver seção "MCP primário
+  — Zendesk" acima) para toda a execução. Só omitir a análise qualitativa e usar apenas
+  dados estruturados do Databricks se **os dois** caminhos de Zendesk falharem.
 - Databricks offline → omitir seções de NPS, CSAT numérico, perfil de cliente e funil de Central de Ajuda.
 - Slack MCP offline → omitir seção "Destaques da semana". Se envio falhar, encerrar Routine.
 
