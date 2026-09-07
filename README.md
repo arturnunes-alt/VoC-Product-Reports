@@ -150,10 +150,28 @@ são skills de tempo real ("hoje/agora"); esta Routine sempre cobre período fec
 (semana anterior), que é sempre roteado para cx-product-insights.
 
 MCPs — únicas integrações permitidas
-- Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk)
+- Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk) — PRIMÁRIO
+- Zendesk — FALLBACK AUTORIZADO (Ago/2026): MCP-Proxy-RecargaPay (tool zendesk), usar
+  **somente** se o primário falhar de forma confirmada (erro de conexão reproduzido em
+  pelo menos 2 tentativas, não apenas ausência de tool na primeira checagem — ver nota
+  abaixo). Sinalizar sempre no log/notificação interna quando este fallback for usado —
+  nunca usar silenciosamente sem registrar.
 - Dados: MCP Data - RecargaPay (databricks_run_query / databricks_preview_query)
 - Contexto e envio: Slack MCP
 ⛔ Não realizar chamadas HTTP diretas a domínios externos.
+
+FALLBACK DE ZENDESK — quando usar
+Se a validação inicial encontrar falha de conexão no MCP Gateway AWS AgentCore (ex:
+erro 502, SdkHttpError, timeout — não apenas "tool não registrada", que pode ser
+variação de sessão e merece nova tentativa antes de qualquer coisa): tentar de novo uma
+vez. Se a falha se repetir da mesma forma na segunda tentativa, isso é falha real de
+infraestrutura, não intermitência de sessão — autorizado usar o MCP-Proxy-RecargaPay
+(tool `zendesk`) como fonte de Zendesk para toda a execução, em vez de abortar. Registrar
+isso claramente na notificação interna e, se o modo permitir, sinalizar de forma
+discreta nos reports gerados que os dados de Zendesk vieram da integração de fallback.
+Nunca abortar a execução só porque o gateway primário falhou, se o fallback autorizado
+estiver funcional — o objetivo desta regra é justamente evitar que os 20 reports deixem
+de ser gerados por uma falha pontual de um único gateway.
 
 FILTROS CRÍTICOS — sempre usar a versão corrigida
 Ao consultar `dim_zendesk_tickets_summary` ou `agg_overview` no Databricks, usar sempre
@@ -207,7 +225,13 @@ skill-databricks-mcp.md, skill-zendesk-cx.md, e as skills organizacionais listad
 SKILL.md (cx-product-insights, cx-orchestrator-reference, cx-helpcenter-impact).
 
 MCPs — únicas integrações permitidas
-- Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk)
+- Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk) — PRIMÁRIO
+- Zendesk — FALLBACK AUTORIZADO (Ago/2026): MCP-Proxy-RecargaPay (tool zendesk), mesma
+  regra da Routine A — usar só após falha confirmada em 2 tentativas, nunca na primeira
+  ausência de tool. Sinalizar sempre no log/notificação interna. Como esta Routine
+  publica a versão final nos canais reais, aplicar o fallback com o mesmo rigor de
+  revalidação já usado no restante da Fase 0-3 — não é motivo para relaxar nenhuma
+  outra checagem.
 - Dados: MCP Data - RecargaPay (databricks_run_query / databricks_preview_query)
 - Contexto, leitura de rascunho/comentários e envio final: Slack MCP
 ⛔ Não realizar chamadas HTTP diretas a domínios externos.
