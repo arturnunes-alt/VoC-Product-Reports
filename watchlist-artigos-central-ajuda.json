@@ -13,7 +13,8 @@
       "evento_amplitude": "ViewedHelp / Ajuda login - Não consigo acessar a minha conta - /help/articles/Não-consigo-acessar-a-minha-conta",
       "volume_medio_diario_ultimos_30d": 300,
       "volume_min_max_periodo": [173, 1072],
-      "observacao": "De longe o maior volume de toda a watchlist -- bate com o achado de que selfie/reconhecimento facial e o maior tema de retencao do bot (skill-bot-retention-scenarios.md). Pico de 1072 em 20/07 -- vale investigar."
+      "observacao": "De longe o maior volume de toda a watchlist -- bate com o achado de que selfie/reconhecimento facial e o maior tema de retencao do bot (skill-bot-retention-scenarios.md). Pico de 1072 em 20/07 -- vale investigar.",
+      "status": "DESPUBLICADO em 06/10/2026 18:39 BRT (Zendesk article ID 43775429800211, categoria Ajuda login -- confirmado via #cx-notifications, n8n Zendesk Article Sync). Evento zerado desde entao; NAO tratar como silencio total. Conteudo parece ter migrado para a nova categoria 'Por selfie/reconhecimento facial' (id 56142850949011) -- buscar os novos eventos ViewedHelp e substituir esta entrada."
     },
     {
       "vertical": "Pix",
