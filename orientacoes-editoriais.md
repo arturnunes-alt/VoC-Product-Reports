@@ -143,14 +143,14 @@ Semana atual: *62 pts* (+4 vs sem. ant.) | Meta: 75
 
 ---
 
-## 🏠 #the-cxm-house — REPORT GERAL
+## 🏠 #cxm-team — REPORT GERAL
 
 **Público:** Time CXM completo — analistas, coordenadores, gestores  
 **Formato:** Report analítico completo com correlações e oportunidades
 
 ### Instruções de análise
 
-**Antes de gerar:** Ler os últimos 7 dias de `#the-cxm-house`, `#lideres-cx-e-cxm` e
+**Antes de gerar:** Ler os últimos 7 dias de `#cxm-team`, `#lideres-cx-e-cxm` e
 `#comunicados_e_atualizações_cx` para identificar os temas ativos da semana.
 Identificar automaticamente os 3 temas mais relevantes para o time CXM com base no
 volume de discussão, alertas postados e variações detectadas nos dados.
@@ -730,36 +730,57 @@ contexto_pontual: ""
 
 ---
 
-## 💰 #squad_loan_seguimento — EMPRÉSTIMO · CRÉDITO CONSIGNADO
+## 💰 #squad_loan_seguimento — EMPRÉSTIMO PESSOAL · EMPRÉSTIMO CONSIGNADO
 
 **Público:** Squad Lending e CX  
-**Formato:** Report de produto com abertura por perfil e comportamento de inadimplência
+**Formato:** Um report por produto — **2 sets separados** (Empréstimo Pessoal e Empréstimo Consignado)
 
-### Instruções de análise
+> ⚠️ **Correção Set/2026 — separação em dois reports.** Antes era um único report de
+> "Empréstimo" com uma abertura "Pessoal vs Consignado" dentro dele. Agora são dois
+> reports independentes, cada um com seu próprio funil, volume, NPS/CSAT e análise,
+> usando a vertical correspondente:
+>
+> | Report | Vertical `agg_overview` | Vertical `dim_zendesk_tickets_summary` |
+> |---|---|---|
+> | Empréstimo Pessoal | `emprestimo` | `empréstimo` |
+> | Empréstimo Consignado | `emprestimo consignado` | `empréstimo consignado` |
+>
+> As duas verticais já são separadas na base — nunca somar uma na outra nem usar uma
+> como "total de Empréstimo". Ordem de envio no canal: Pessoal primeiro, depois
+> Consignado.
 
-Ler `#squad_loan_seguimento` dos últimos 7 dias.
+### Instruções de análise (valem para os dois reports)
 
-**Aberturas obrigatórias:**
+Ler `#squad_loan_seguimento` dos últimos 7 dias e separar os temas por produto antes de
+analisar — um tema de consignado não entra no report do pessoal e vice-versa. Se um
+tema do canal não deixar claro a qual produto se refere, usar o contexto do ticket
+(vertical) em vez de repetir nos dois.
+
+**Aberturas obrigatórias, para cada produto:**
 - Perfil: New · NewNew · Repeat
-- Por tipo de produto: Empréstimo Pessoal vs Crédito Consignado
+
+**Volume muito diferente entre os dois:** o pessoal tem ordem de grandeza maior que o
+consignado (em ago–set/2026: ~10.950 vs ~650 tickets em `dim_zendesk_tickets_summary`).
+No Consignado, uma variação percentual alta pode ser só poucas dezenas de tickets —
+sempre apresentar o número absoluto junto do percentual, e aplicar com mais cautela os
+critérios de alerta baseados em %. Não aplicar nenhum limiar de "queda/alta relevante"
+sem olhar o volume absoluto.
+
+### Report 1 — Empréstimo Pessoal
+
+**Abertura adicional:**
 - Collateral Wallet: separar contatos relacionados a débito automático quando relevante
 
-**Estrutura do report (Thread 1):**
-
 ```
-*📊 Report VoC — Empréstimo · Semana NN*
+*📊 Report VoC — Empréstimo Pessoal · Semana NN*
 
-*FUNIL DE SUPORTE — EMPRÉSTIMO*
+*FUNIL DE SUPORTE — EMPRÉSTIMO PESSOAL*
 [Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
 
 *ATENDIMENTO N1*
 *[N] tickets* ([+/-X%] WoW)
 CSAT: *[X pts]* | Resolutividade: *[X%]*
 Últimas 5 semanas: [série]
-
-*Abertura por produto:*
-• Empréstimo Pessoal: [N] ([X%]) | Motivo principal: [motivo]
-• Crédito Consignado: [N] ([X%]) | Motivo principal: [motivo]
 
 Top motivos e causas raiz:
 • [top 3 com análise qualitativa]
@@ -774,14 +795,46 @@ Temas dos detratores nas respostas abertas.
 • [N] contatos · Canais regulatórios: [N] · Sentimento: [predominante]
 
 *DESTAQUES DA SEMANA* 💬
-• [temas do canal + variações]
+• [temas do canal relativos ao pessoal + variações]
+
+🔗 https://sites.google.com/recargapay.com/voc/
+🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
+```
+
+### Report 2 — Empréstimo Consignado
+
+```
+*📊 Report VoC — Empréstimo Consignado · Semana NN*
+
+*FUNIL DE SUPORTE — EMPRÉSTIMO CONSIGNADO*
+[Funil completo — Distribuição de Volume RecargaBot/N1/N2 + evolução Central de Ajuda por vertical]
+
+*ATENDIMENTO N1*
+*[N] tickets* ([+/-X%] WoW) — sempre com o número absoluto, base pequena
+CSAT: *[X pts]* | Resolutividade: *[X%]*
+Últimas 5 semanas: [série]
+
+Top motivos e causas raiz:
+• [top 3 com análise qualitativa]
+
+*PERFIL:* New [X%] · NewNew [X%] · Repeat [X%]
+
+*NPS TRANSACIONAL* 📊
+[Formato padrão — 5 semanas; se houver menos de 10 respostas na semana, dizer que a amostra é pequena em vez de comentar a variação]
+Temas dos detratores nas respostas abertas.
+
+*SPECIAL CASES N2*
+• [N] contatos · Canais regulatórios: [N] · Sentimento: [predominante]
+
+*DESTAQUES DA SEMANA* 💬
+• [temas do canal relativos ao consignado + variações]
 
 🔗 https://sites.google.com/recargapay.com/voc/
 🔗 CXM - Briefing de Suporte: https://optimus.recargapay.com/PHP/dashboard_view.php?id=246
 ```
 
 ```
-contexto_pontual: ""
+contexto_pontual: ""   # se preenchido, indicar no texto a qual produto se refere (Pessoal ou Consignado); sem indicação, vale para os dois
 ```
 
 ---
