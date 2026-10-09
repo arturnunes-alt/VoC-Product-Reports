@@ -11,7 +11,7 @@ tempo quase real — sem esperar o report da próxima segunda-feira.
 
 ## O que essa Routine faz, em uma frase
 
-A cada 3 horas (10h, 13h, 16h), ela olha o que aconteceu desde a última checagem, compara
+Duas vezes por dia, terça a sexta (11h, 15h — não roda segunda-feira), ela olha o que aconteceu desde a última checagem, compara
 com o que é normal para aquele mesmo horário do dia, confere se algo assim já foi
 sinalizado em algum canal relevante, e — só se for realmente crítico e realmente novo —
 avisa a pessoa certa do time de CXM, marcando-a diretamente em `#the-voice-cx`.
@@ -58,18 +58,20 @@ A Routine lê o arquivo inteiro a cada execução via `Google Drive:read_file_co
 decisão consciente de aceitar esse custo em troca de simplicidade, em vez de manter uma
 versão reduzida da planilha.
 
-### Mapeamento de responsáveis — já preenchido (31/07/2026)
+### Mapeamento de responsáveis — atualizado em 09/10/2026
 
 O arquivo `mapeamento-responsaveis.json` já está populado com os dados reais da planilha:
-https://docs.google.com/spreadsheets/d/1ENUwksFJbaU3tfq_yz62KM6-4Ud-W9trrQ0X3t1Ejs0
+https://docs.google.com/spreadsheets/d/1xa8gATKQ7oh0g3nwJNnLFY337pVhgqWRYfF9ozg3jl0
 
 **Sempre que a planilha mudar**, atualizar o arquivo manualmente — não há leitura
 automática (Google Sheets não é legível pelas ferramentas desta Routine, só Google Docs).
 
 **Pontos de atenção no mapeamento atual:**
-- Verticais marcadas `"On Demand"` não têm responsável fixo — a Routine envia o alerta
-  normalmente, sem marcar ninguém (Transporte, Recarga de Celular, Contas e Boletos,
-  Boleto de Cobrança)
+- Hoje as 19 verticais têm responsável (Alexandre, Anderson, Eduardo ou Patty). Se uma
+  vertical voltar a ficar marcada `"On Demand"` ou não constar no arquivo, a Routine envia
+  o alerta normalmente, sem marcar ninguém
+- A Patty foi identificada no Slack como *Customer Experience Specialist* (`U019WQT2KFU`);
+  existe outra "Patty Pincerno" (Finance Operations) que não é a dona dos squads de CX
 - `Contas e Boletos` e `Boleto de Cobrança` foram confirmadas como correspondendo a
   "Bills" na planilha
 - Squads da planilha sem vertical correspondente hoje (Checkout, Campanhas e Parcerias,
@@ -97,12 +99,11 @@ voltar na tela de edição da mesma Routine para adicionar os outros dois trigge
 - **Triggers (adicionar os 3 na seção "Select a trigger" da tela de edição — não é
   necessário criar 3 Routines separadas, uma única Routine aceita múltiplos triggers de
   Schedule):**
-  - Schedule 1 → cron `0 13 * * 1-5` (10h BRT, seg–sex)
-  - Schedule 2 → cron `0 16 * * 1-5` (13h BRT, seg–sex)
-  - Schedule 3 → cron `0 19 * * 1-5` (16h BRT, seg–sex)
+  - Schedule 1 → cron `0 14 * * 2-5` (11h BRT, terça a sexta — não roda segunda)
+  - Schedule 2 → cron `0 18 * * 2-5` (15h BRT, terça a sexta — não roda segunda)
 
-Alternativa equivalente: um único trigger de Schedule com cron `0 13,16,19 * * 1-5`,
-combinando os 3 horários numa única expressão. Prefira 3 triggers separados se quiser
+Alternativa equivalente: um único trigger de Schedule com cron `0 14,18 * * 2-5`,
+combinando os 2 horários numa única expressão. Prefira 2 triggers separados se quiser
 poder pausar um horário específico sem afetar os outros dois.
 
 **Prompt da Routine:**
@@ -144,7 +145,7 @@ nenhum alerta — isso é o comportamento correto, não uma falha.
 
 JANELA
 Calcule a janela desde a última execução conforme a Fase 0 — considerando que a execução
-das 10h de segunda cobre desde sexta às 16h.
+das 11h de segunda cobre desde sexta às 15h.
 ```
 
 ### 3. Testar antes de ativar
