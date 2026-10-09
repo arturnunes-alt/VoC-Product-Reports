@@ -357,7 +357,8 @@ Semana 23–29/06 BRT: `created>=2026-06-23T03:00:00Z created<=2026-06-30T03:00:
 | `#pixcc-home-raf-cx` | Pix (In/Out/Chaves) | `pix-in` `pix-out` `pix-chaves_pix` | ⚠️ **`pix`** (agregada, sem subtipo) | `agg_overview` não separa In/Out/Chaves — usar `dim_zendesk_tickets_summary` com `vertical LIKE 'pix::%'` para o subtipo |
 | `#pixcc-home-raf-cx` | Pix CC | não tem tag própria | ⚠️ **`pix`** (agregada) | Ver §5 — identificar via menção de "cartão" na transcrição do ticket (`pix::out`), não por vertical |
 | `#pixcc-home-raf-cx` | RAF | `raf-indicado` `raf-indicador` | ⚠️ **`raf`** (agregada, sem subtipo) | `agg_overview` não separa Indicado/Indicador — usar `dim_zendesk_tickets_summary` com `vertical LIKE 'raf::%'` para o subtipo |
-| `#squad_loan_seguimento` | Empréstimo | `empréstimo_` `empréstimo_crédito_consignado` | `emprestimo` | OK — separada |
+| `#squad_loan_seguimento` | Empréstimo Pessoal | `empréstimo_` ⚠️ | `emprestimo` | OK — separada. Tag ao vivo não confirmada como exclusiva do pessoal — para número oficial usar a vertical do Databricks |
+| `#squad_loan_seguimento` | Empréstimo Consignado | `empréstimo_crédito_consignado` | `emprestimo consignado` | OK — vertical própria (em `dim_zendesk_tickets_summary`: `empréstimo consignado`) |
 | `#subacquirer-cx` | Tap to Pay | `tap_to_pay` | `tap to pay` | OK — separada |
 | `#subacquirer-cx` | Link de Pagamento | `link_de_pagamento` | `link de pagamento` | OK — separada |
 
