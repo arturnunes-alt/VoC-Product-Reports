@@ -962,21 +962,45 @@ mesmo ainda pequenos em volume absoluto. Incluir os confirmados na seção "Dest
 Oportunidades", sinalizando que é tendência emergente, não volume absoluto. Ver
 metodologia completa em `SKILL.md` Fase 3.
 
-**Redes Sociais (Ago/2026, obrigatório em todo report de produto):** buscar posts e
-comentários relacionados à vertical via `prod.cx.fat_buzzmonitor_posts`
-(`skill-databricks-mcp.md` §13) — busca por palavra-chave no conteúdo, não join com
-Zendesk (não existe chave confiável). Incluir no report como bloco objetivo:
+**Menções ao produto e reclamações por motivo (Out/2026, obrigatório em TODO report de produto,
+inclusive os de cada template desta seção):** duas seções entram em todo report de produto,
+mesmo quando o template do produto abaixo não as lista. Metodologia em `SKILL.md` Fase 3 e
+`skill-databricks-mcp.md` §14 e §15.
+
+1. **Reclamações nos principais motivos** — logo depois de "Top motivos / Top causas raiz" do
+   Atendimento N1. Para os 3 principais motivos: *o que gera o contato*, *expectativa que falhou*
+   e *correlação com evento/mudança*, a partir dos resumos de transcrição.
+2. **Menções ao produto** — substitui o antigo bloco "Redes Sociais" e vem antes de "Destaques da
+   semana". Cobre **NPS Relacional, Lojas de apps e Redes sociais**, sempre com o **mapeamento do
+   painel Arturito 141** (`mapeamento-produtos-painel141.json`: a vertical do report aponta o
+   produto do painel e sua regex). **Não usar lista de palavras-chave própria.**
 
 ```
-*Redes Sociais* 📱
-• [Post 1 — rede social, breve contexto]: [N] comentários, sentimento predominante
-  [positivo/negativo/neutro]
-  — "[trecho de comentário representativo 1]"
-  — "[trecho de comentário representativo 2]"
-• [Post 2, se houver outro relevante — mesmo formato]
+*Reclamações nos principais motivos* 🔎
+• *[Motivo]* ([N] tickets · [X%] com motivo de não resolução registrado)
+  O que gera o contato: [tema A] ([X%]) · [tema B] ([X%])
+  Expectativa que falhou: [o que o cliente descreve esperar]
+  Correlação: [evento/mudança — fonte, data] coincide com [relato ou variação]
+_Base: resumos de transcrição de [N] tickets._
+
+*Menções ao produto* 📣
+• *NPS Relacional:* [N] comentários citam o produto ([X%] de [T]) | prom [N] · neut [N] · detr [N]
+  Temas: [tema] · [tema] — "[trecho]"
+• *Lojas de apps:* [N] reviews | nota média [X] (app: [X]) | 1–2★: [N] ([X%])
+• *Redes sociais (público):* [N] interações | negativas [N] ([X%]) | com ticket [N]
+Correlações: [relato] ↔ [evento/mudança — fonte, data]
 ```
 
-Selecionar só posts com sinal relevante (sentimento negativo concentrado, ou volume de
-comentários fora do padrão) — não listar todo post encontrado na busca. Máximo 2-3
-posts por report, cada um com no máximo 2-3 comentários representativos. Se a busca não
-encontrar nada relevante na janela, omitir a seção inteira — não forçar conteúdo vazio.
+**Regra de inferência (obrigatória):** só afirmar o que está nos dados, nos reports ou em mensagens
+de Slack, sempre com fonte e data. "Expectativa que falhou" só quando o relato do cliente a descreve,
+nas palavras dele. Correlação é apresentada lado a lado (evento ↔ relato) com "coincide com" ou "no
+mesmo tema" — **nunca "causou"/"explica"**, salvo quando o próprio report ou Slack já afirma a relação
+(citar quem afirmou). Sem evento correlato registrado, dizer isso; não propor explicação. Se o relato
+do cliente não cita o evento, dizer que a ligação é só de tema ou de janela.
+
+**Cuidados por fonte:** "NPS de quem cita" não é o NPS oficial; sentimento de redes é enviesado
+para negativo (ler como demanda); lojas mudaram de coleta em 31/08 (preferir % 1–2★ e nota média).
+**Verticais sem produto equivalente no painel** (hoje Movimentações Financeiras): omitir o bloco de
+menções e sinalizar a lacuna só na notificação interna. **Mapeamentos aproximados** (Minha Conta,
+Boleto de Cobrança, Rendimento CDI): repetir a ressalva do arquivo em uma frase. Máximo 3 motivos e 2
+trechos por fonte no Slack; sem dados, omitir a seção inteira.
