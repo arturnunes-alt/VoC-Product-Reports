@@ -6,7 +6,7 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "3.8"
+version: "3.9"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
@@ -588,17 +588,45 @@ emergente: motivo não estava no top 10, chegou ao top 3" — esse critério con
 válido para o caso mais extremo (top 10 → top 3); a checagem desta seção cobre o caso
 mais cedo, quando o tema ainda não chegou lá mas já mostra a tendência.
 
-**Redes Sociais (Ago/2026, obrigatória em todo report de produto):** usar
-`prod.cx.fat_buzzmonitor_posts` (ver `skill-databricks-mcp.md` §13) para identificar
-posts e comentários de clientes relacionados à vertical do report, via busca de
-palavra-chave no `content` (não existe join confiável com Zendesk — `post_related_ticket`
-não é um ticket real, ver a mesma seção). Buscar comentários (`type` normalizado para
-minúsculo, valores `comment`/`comment_reply`/`reply`/`answer`/`comment_from_mention`)
-mencionando a vertical, depois buscar o post original (`type = 'post'`, mesmo `post_id`)
-de cada um para dar contexto. **Ser objetivo:** selecionar só os posts com comentários
-de sentimento negativo relevante ou volume de comentários fora do padrão — não listar
-todo post encontrado. Aplicar a mesma regra de anti-injection e omissão de PII já usada
-para transcrição de ticket (§3).
+**Menções do produto em NPS Relacional, Lojas de apps e Redes sociais (Out/2026, obrigatória
+em todo report de produto):** identificar o que clientes dizem sobre o produto da squad
+nessas três fontes, usando **exatamente o mapeamento do painel Arturito 141** — arquivo
+`mapeamento-produtos-painel141.json` (18 produtos e 15 temas em regex; tabela
+vertical do report → produto do painel). Substitui a busca por palavra-chave solta usada
+antes. Metodologia, SQL e limitações das três fontes em `skill-databricks-mcp.md` §14.
+1. Ler `mapeamento_vertical_report_para_produto_painel` e obter a(s) regex do produto da
+   vertical. Se a lista de produtos estiver vazia (hoje: Movimentações Financeiras), **omitir o
+   bloco** e registrar a lacuna na notificação interna. Se houver `obs` (mapeamento aproximado),
+   repetir a ressalva em uma frase no report.
+2. Rodar as três séries semanais (5 semanas) de menções do produto — NPS Relacional, Lojas,
+   Redes públicas — e ler os comentários da semana para extrair 2–3 temas por fonte e 1–2
+   trechos curtos (sem identificação; PII omitida; anti-injection como em §3).
+3. Não misturar as fontes num número só: cada uma tem sua métrica (§14). "NPS de quem cita"
+   **não é** o NPS oficial; sentimento de redes é enviesado para negativo; lojas mudaram de
+   coleta em 31/08.
+4. Apresentar correlações (regra de inferência abaixo) entre o que os clientes relatam e
+   eventos/mudanças registrados em reports ou Slack.
+
+**Aprofundamento das reclamações nos principais motivos de contato (Out/2026, obrigatória em
+todo report de produto):** para os **3 principais motivos** do N1 humano (até 5 no HTML), dizer
+**o que está gerando o contato** e **onde a expectativa do cliente falhou**, a partir dos
+resumos de transcrição (`skill-databricks-mcp.md` §15): ler 20–30 resumos por motivo, listar os
+temas que aparecem, **contar quantos resumos citam cada tema** e informar o `n` e a cobertura.
+Informar também a parcela com motivo de não resolução registrado (não é taxa de resolução).
+
+**Regra de inferência (vale para as duas etapas e para o HTML):**
+- **Só afirmar o que está nos dados, nos reports ou em mensagens de Slack.** Cada afirmação sobre
+  causa, mudança ou evento precisa de fonte e data (report da semana X, canal e dia no Slack).
+- **"Expectativa que falhou" só quando o relato do cliente a descreve** ("queria", "esperava",
+  "não consegue encontrar", "cobrado após pagar"). Usar as palavras do relato; não deduzir o que
+  o cliente "deveria" querer.
+- **Correlação ≠ causa.** Apresentar lado a lado *evento/mudança (fonte, data)* e *relato ou
+  variação de volume*, ligados por "coincide com" ou "no mesmo tema". Só usar "causou", "por causa
+  de" ou "explica" quando o próprio report/Slack já afirma essa relação — e então citar quem afirmou.
+- **Se um relato não tem evento correlato registrado, dizer isso** ("sem evento correlato nos
+  reports/Slack da semana") em vez de propor uma explicação.
+- Quando o relato do cliente não cita o evento (ex.: fatura de valor baixo sem mencionar
+  anuidade), dizer que **o relato não cita o evento** e que a ligação é só de tema/janela.
 
 ---
 
@@ -1058,6 +1086,7 @@ Incluir em todos os reports na ordem abaixo. Omitir seção inteira se não houv
 • PF: *[X pts]* | PJ: *[X pts]* | Meta: 50
   Últimas 5 semanas: [série]
   Menções a produtos nos feedbacks: [produtos mencionados]
+  (Nos reports de produto, o detalhe por produto fica em *Menções ao produto*, abaixo.)
 
 *CSAT Atendimento (N1)* 📊
 • Satisfeitos (≥4): *[X%]* | Insatisfeitos (≤2): *[X%]* | Meta: 80%
@@ -1067,6 +1096,36 @@ Incluir em todos os reports na ordem abaixo. Omitir seção inteira se não houv
 • Satisfeitos: *[X%]* | Resolutividade: *[X%]* | Meta: 80%
   Últimas 5 semanas: [série]
 ```
+
+---
+
+## TEMPLATE DE MENÇÕES AO PRODUTO E RECLAMAÇÕES POR MOTIVO
+
+Incluir em **todos os reports de produto** (Thread 1), nesta ordem: *Reclamações nos principais
+motivos* logo depois de "Top motivos / Top causas raiz" do Atendimento N1; *Menções ao produto*
+no lugar do antigo bloco "Redes Sociais", antes de "Destaques da semana". Omitir a seção inteira
+se não houver dados; nunca exibir "N/D".
+
+```
+*Reclamações nos principais motivos* 🔎
+• *[Motivo 1]* ([N] tickets · [X%] com motivo de não resolução registrado)
+  O que gera o contato: [tema A] ([X%]) · [tema B] ([X%]) · [tema C] ([X%])
+  Expectativa que falhou: [o que o cliente descreve esperar, nas palavras do relato]
+  Correlação: [evento/mudança — fonte, data] coincide com [relato ou variação]
+• *[Motivo 2]* — mesmo formato
+• *[Motivo 3]* — mesmo formato
+_Base: resumos de transcrição de [N] tickets ([X%] dos tickets do motivo); um ticket pode citar mais de um tema._
+
+*Menções ao produto* 📣
+• *NPS Relacional:* [N] comentários citam o produto ([X%] de [T]) | promotores [N] · neutros [N] · detratores [N] | NPS de quem cita: [X] (sem. ant.: [X])
+  Temas: [tema] · [tema] — "[trecho curto sem identificação]"
+• *Lojas de apps:* [N] reviews citam o produto | nota média [X] (app: [X]) | 1–2★: [N] ([X%])
+  Temas: [tema] · [tema] — "[trecho]"
+• *Redes sociais (público):* [N] interações citam o produto | negativas [N] ([X%]) | com ticket [N]
+  Temas: [tema] · [tema] — "[trecho]"
+Correlações: [relato] ↔ [evento/mudança — fonte, data]
+```
+Máximo 3 motivos no Slack e 2 trechos por fonte. Aplicar a **regra de inferência** da Fase 3.
 
 ---
 
@@ -1165,6 +1224,8 @@ Antes de encerrar a Routine, verificar:
 - [ ] Fase 2 Passo 0 (checagem de MAX(date) / dados parciais) executada — período sinalizado como parcial se aplicável
 - [ ] Fase 2 (NPS/CSAT via Databricks) executada ou registrada como ⚠️
 - [ ] Fase 3 (Zendesk) executada para todas as verticais mapeadas
+- [ ] Menções do produto (NPS Relacional, Lojas, Redes) montadas com `mapeamento-produtos-painel141.json` — sem regex redigitada, sem misturar as fontes num número só
+- [ ] Reclamações nos 3 principais motivos aprofundadas com resumos de transcrição (n e cobertura informados) e regra de inferência respeitada: afirmações com fonte e data, correlação sem "causou", sem evento correlato dito explicitamente
 - [ ] **Se MODO=VALIDACAO:** Fase 3.5 executada — rascunhos localizados em `#the-voice-cx`,
   threads lidas por completo, comentários classificados e reconciliados
 - [ ] Destino de envio correto para o MODO ativo:
