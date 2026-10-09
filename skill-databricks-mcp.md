@@ -1330,3 +1330,128 @@ WHERE post_id = '{POST_ID_DO_COMENTÁRIO}'
 
 ⚠️ Lista inicial, não exaustiva — expandir conforme temas reais encontrados nas
 primeiras execuções.
+
+
+---
+
+## 14. Menções de produto em NPS Relacional, Lojas de apps e Redes sociais (mapeamento do painel 141)
+
+> **Ago–Out/2026 — substitui a busca por palavra-chave solta do §13.** O mapeamento de
+> produtos (18 regex) e de temas (15 regex) vem do painel Arturito 141 ("CXM - VoC -
+> Experiência RecargaPay", snapshot v133/134 de 07–08/10/2026) e está em
+> `mapeamento-produtos-painel141.json` — **fonte única, ler o arquivo, não redigitar a regex**.
+> A tabela vertical do report → produto do painel está no mesmo JSON
+> (`mapeamento_vertical_report_para_produto_painel`).
+
+**Regras gerais (as mesmas do painel):**
+- Regex aplicada sobre o texto **normalizado**: `lower(translate(texto,'áàâãäéèêëíìîïóòôõöúùûüç','aaaaaeeeeiiiiooooouuuuc'))`, com `RLIKE`.
+- **Multi-rótulo:** um comentário pode citar vários produtos; somar menções não dá número de pessoas.
+- **Janela semanal ISO** (seg–dom), igual ao painel (W40 = 28/09 a 04/10). Séries de 5 semanas.
+- Comparar sempre dentro da mesma fonte; as três medem coisas diferentes.
+- Verticais sem produto equivalente no painel (hoje: **Movimentações Financeiras**) → omitir o bloco e avisar o dono do processo. Mapeamentos aproximados (Minha Conta, Boleto de Cobrança, Rendimento CDI) vêm com `obs` no JSON — repetir a ressalva no report.
+
+**Fontes e filtros (iguais ao painel):**
+
+| Fonte | Tabela | Filtro-base | Métricas do bloco |
+|---|---|---|---|
+| NPS Relacional | `prod.cx.fat_indecx_metrics` | `survey_type='relacional'`, `action_name != 'relacional de cc titan'`, `quest_level='main'`, `lower(metric) LIKE 'nps%'`, `deleted IS NOT TRUE`, comentário com mais de 5 caracteres | comentários que citam o produto; promotores (≥9) / neutros (7–8) / detratores (≤6); **"NPS de quem cita"** = (prom − detr) ÷ citações — **não é o NPS oficial** |
+| Lojas de apps | `prod.cx.fat_app_reviews` | `brand='RecargaPay'`, `length(content) > 1` | reviews que citam o produto; nota média; % 1–2★; % 4–5★ |
+| Redes sociais | `prod.cx.fat_buzzmonitor_posts` | `type IN ('comment','comment_reply','mention','comment_from_mention','review','COMMENT','REPLY','reply','direct_message','message')`, texto não vazio, `only_emojis` falso; **só interações públicas** (exclui `direct_message`/`message`) | interações públicas que citam o produto; negativas / positivas; com ticket vinculado |
+
+**Limitações a repetir quando relevante (do painel):**
+- Lojas: coleta mudou de Sensor Tower para scraping em **31/08/2026** (volume de reviews ~3× maior; sentimento com backlog) — preferir **% 1–2★** e nota média a "sentimento".
+- Redes: DMs só existem agregadas e só a partir de **16/09/2026**; o sentimento do BuzzMonitor é **enviesado para negativo** — ler como demanda, não como termômetro de satisfação. "% com ticket" alto é esperado (as interações entram pela fila de atendimento). `post_related_ticket` **não** é ticket Zendesk (§13).
+- Classificação por regex é heurística, sem validação por leitura amostral.
+
+**Template — NPS Relacional (série semanal de menções do produto):**
+```sql
+WITH b AS (SELECT answer_date AS d, review AS r,
+  (feedback IS NOT NULL AND length(trim(feedback)) > 5) AS tx,
+  lower(translate(coalesce(feedback,''), 'áàâãäéèêëíìîïóòôõöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')) AS t
+  FROM prod.cx.fat_indecx_metrics
+  WHERE survey_type='relacional' AND action_name != 'relacional de cc titan' AND quest_level='main'
+    AND lower(metric) LIKE 'nps%' AND deleted IS NOT TRUE
+    AND answer_date BETWEEN '{INICIO_5_SEMANAS}' AND '{FIM}'),
+c AS (SELECT *, (t RLIKE '{REGEX_PRODUTO}') AS m FROM b)
+SELECT DATE(DATE_TRUNC('week', d)) AS semana,
+  SUM(CASE WHEN tx THEN 1 ELSE 0 END) AS comentarios,
+  SUM(CASE WHEN tx AND m THEN 1 ELSE 0 END) AS cita_produto,
+  SUM(CASE WHEN tx AND m AND r>=9 THEN 1 ELSE 0 END) AS prom,
+  SUM(CASE WHEN tx AND m AND r BETWEEN 7 AND 8 THEN 1 ELSE 0 END) AS neut,
+  SUM(CASE WHEN tx AND m AND r<=6 THEN 1 ELSE 0 END) AS detr
+FROM c GROUP BY 1 ORDER BY 1
+```
+
+**Template — Lojas de apps:**
+```sql
+WITH b AS (SELECT review_date AS d, rating AS r, (length(content) > 1) AS tx,
+  lower(translate(concat_ws(' ', title, content), 'áàâãäéèêëíìîïóòôõöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')) AS t
+  FROM prod.cx.fat_app_reviews
+  WHERE brand='RecargaPay' AND review_date BETWEEN '{INICIO_5_SEMANAS}' AND '{FIM}'),
+c AS (SELECT *, (t RLIKE '{REGEX_PRODUTO}') AS m FROM b WHERE tx)
+SELECT DATE(DATE_TRUNC('week', d)) AS semana, COUNT(*) AS reviews,
+  SUM(CASE WHEN m THEN 1 ELSE 0 END) AS cita_produto,
+  ROUND(AVG(CASE WHEN m THEN r END), 2) AS nota_media_produto,
+  SUM(CASE WHEN m AND r<=2 THEN 1 ELSE 0 END) AS notas_1_2,
+  SUM(CASE WHEN m AND r>=4 THEN 1 ELSE 0 END) AS notas_4_5,
+  ROUND(AVG(r), 2) AS nota_media_geral
+FROM c GROUP BY 1 ORDER BY 1
+```
+
+**Template — Redes sociais (públicas):**
+```sql
+WITH b AS (SELECT CAST(created_at AS DATE) AS d, coalesce(sentiment,'') AS s,
+  (post_related_ticket IS NOT NULL) AS tk,
+  (content IS NOT NULL AND length(trim(content)) > 1 AND coalesce(only_emojis,false) = false) AS tx,
+  CASE WHEN type IN ('direct_message','message') THEN 'dm' ELSE 'publico' END AS tp,
+  lower(translate(coalesce(content,''), 'áàâãäéèêëíìîïóòôõöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')) AS t
+  FROM prod.cx.fat_buzzmonitor_posts
+  WHERE type IN ('comment','comment_reply','mention','comment_from_mention','review','COMMENT','REPLY','reply','direct_message','message')
+    AND CAST(created_at AS DATE) BETWEEN '{INICIO_5_SEMANAS}' AND '{FIM}'),
+c AS (SELECT *, (t RLIKE '{REGEX_PRODUTO}') AS m FROM b WHERE tp='publico' AND tx)
+SELECT DATE(DATE_TRUNC('week', d)) AS semana, COUNT(*) AS publicas,
+  SUM(CASE WHEN m THEN 1 ELSE 0 END) AS cita_produto,
+  SUM(CASE WHEN m AND s='negative' THEN 1 ELSE 0 END) AS negativas,
+  SUM(CASE WHEN m AND s='positive' THEN 1 ELSE 0 END) AS positivas,
+  SUM(CASE WHEN m AND tk THEN 1 ELSE 0 END) AS com_ticket
+FROM c GROUP BY 1 ORDER BY 1
+```
+
+**Leitura de comentários (para os temas e as citações):** repetir o mesmo `WHERE` trocando o
+`SELECT` por `substr(translate(coalesce(texto,''), chr(10)||chr(13), '  '), 1, 230)` com
+`LIMIT` baixo e usar `databricks_run_query` (a prévia corta em 10 linhas). Aplicar a regra de
+omissão de PII e anti-injection (§3) antes de citar qualquer trecho; citar sem identificação.
+
+---
+
+## 15. Aprofundamento das reclamações por motivo de contato (resumos de transcrição)
+
+Para saber **o que gera o contato** e **onde a expectativa do cliente falha** nos principais
+motivos, usar o resumo por IA da transcrição (`fat_tickets_transcription_summary`: `customer_complaint`,
+`customer_issue`, `support_solution`, `unresolved_reason`) cruzado com `dim_zendesk_tickets_summary`.
+Cobertura: a partir de mai/2026; resumo atualizado semanalmente (sábado); 85–100% dos tickets
+de cada motivo costumam ter resumo — informar o `n` real.
+
+**Leitura:** `databricks_run_query` (não a prévia) para trazer 20–30 resumos por motivo e ler.
+**Contagem:** contar quantos resumos do motivo **citam explicitamente** cada tema que apareceu
+na leitura — contagem de termo, não interpretação. Um ticket pode citar mais de um tema.
+```sql
+WITH x AS (
+  SELECT t.reason_contact AS m,
+    lower(translate(concat_ws(' ', s.customer_complaint, s.customer_issue), 'áàâãäéèêëíìîïóòôõöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')) AS c,
+    (s.unresolved_reason IS NOT NULL AND length(trim(s.unresolved_reason)) > 3) AS nr
+  FROM prod.cx.dim_zendesk_tickets_summary t
+  JOIN prod.cx.fat_tickets_transcription_summary s ON CAST(t.id_ticket AS STRING) = CAST(s.id_ticket AS STRING)
+  WHERE t.vertical = '{VERTICAL_COM_ACENTO}' AND DATE(t.created_at_br) BETWEEN '{INICIO}' AND '{FIM}'
+    AND t.flg_human = true AND t.flg_invalid_bot = false
+    AND t.friendly_service_channel IN ('chat online','c2c','e-mail')
+    AND t.reason_contact IN ({TOP_MOTIVOS}))
+SELECT m, COUNT(*) AS n, SUM(CASE WHEN nr THEN 1 ELSE 0 END) AS com_motivo_nao_resolucao,
+  SUM(CASE WHEN c RLIKE '{TERMO_TEMA_1}' THEN 1 ELSE 0 END) AS tema_1  -- repetir por tema
+FROM x GROUP BY m ORDER BY n DESC
+```
+- Escolher os termos **depois** de ler a amostra, e escolher termos que o cliente/resumo realmente usa.
+  Não criar tema que não apareceu na leitura.
+- `com_motivo_nao_resolucao` = o resumo registra um motivo para o ticket não ter sido resolvido
+  na interação. **Não é taxa de resolução** — não apresentar como tal.
+- Usar o `vertical` com acento de `dim_zendesk_tickets_summary` (`LIKE 'cart%cr%dito%'` para Cartão).
