@@ -1,0 +1,208 @@
+{
+  "_comentario": "Sincronizado manualmente a partir da planilha 'CXM · Mapa de Canais Slack por Squad' em 09/10/2026. Atualizar sempre que a planilha mudar: https://docs.google.com/spreadsheets/d/1xa8gATKQ7oh0g3nwJNnLFY337pVhgqWRYfF9ozg3jl0",
+  "_status": "Atualizado com a nova planilha em 09/10/2026 (substitui a planilha de 31/07/2026)",
+  "_mudancas_vs_versao_anterior": [
+    "Patty passa a ser responsavel por Emprestimo Pessoal, Emprestimo Consignado, Contas e Boletos, Boleto de Cobranca, Transporte e Recarga de Celular (antes: Cassio e 'On Demand')",
+    "Eduardo Reis passa a ser responsavel por CDB, Rendimento CDI e Movimentacoes Financeiras (Investimentos) e por RAF (antes: Alexandre e Cassio)",
+    "Cassio Mitherhofer nao aparece mais na planilha",
+    "Nenhuma das 19 verticais mapeadas esta mais como 'On Demand'"
+  ],
+  "responsaveis": [
+    {
+      "squad": "Minha Conta",
+      "canal_squad": "#account_cx",
+      "squad_planilha": "Account",
+      "responsavel_cxm": "Anderson Fernandes",
+      "user_id_slack": "U01L6R936LE"
+    },
+    {
+      "squad": "Cartão de Crédito",
+      "canal_squad": "#cc-produto-e-cx",
+      "squad_planilha": "Credit Card",
+      "responsavel_cxm": "Alexandre Luz",
+      "user_id_slack": "U03ABV9BG1F",
+      "canal_planilha": "#cc-produto-cx",
+      "nota": "Planilha lista #cc-produto-cx; o canal usado pelo pipeline e #cc-produto-e-cx (C0661UV8VP0). Confirmar se e o mesmo canal."
+    },
+    {
+      "squad": "Conta Desativada",
+      "canal_squad": "#cx_fraud",
+      "squad_planilha": "Fraude e Segurança",
+      "responsavel_cxm": "Anderson Fernandes",
+      "user_id_slack": "U01L6R936LE"
+    },
+    {
+      "squad": "Carteira Desativada",
+      "canal_squad": "#cx_fraud",
+      "squad_planilha": "Fraude e Segurança",
+      "responsavel_cxm": "Anderson Fernandes",
+      "user_id_slack": "U01L6R936LE"
+    },
+    {
+      "squad": "Chargeback Recovery",
+      "canal_squad": "#cx_fraud",
+      "squad_planilha": "Fraude e Segurança",
+      "responsavel_cxm": "Anderson Fernandes",
+      "user_id_slack": "U01L6R936LE"
+    },
+    {
+      "squad": "CDB",
+      "canal_squad": "#investments-e-cx",
+      "squad_planilha": "Investimentos",
+      "responsavel_cxm": "Eduardo Reis",
+      "user_id_slack": "U0BG3PP3Q6Q"
+    },
+    {
+      "squad": "Rendimento CDI",
+      "canal_squad": "#investments-e-cx",
+      "squad_planilha": "Investimentos",
+      "responsavel_cxm": "Eduardo Reis",
+      "user_id_slack": "U0BG3PP3Q6Q"
+    },
+    {
+      "squad": "Movimentacoes Financeiras",
+      "canal_squad": "#investments-e-cx",
+      "squad_planilha": "Investimentos",
+      "responsavel_cxm": "Eduardo Reis",
+      "user_id_slack": "U0BG3PP3Q6Q"
+    },
+    {
+      "squad": "Transporte",
+      "canal_squad": "#melhoria-continua-verticais",
+      "squad_planilha": "Transporte e TopUp",
+      "responsavel_cxm": "Patty",
+      "user_id_slack": "U019WQT2KFU"
+    },
+    {
+      "squad": "Contas e Boletos",
+      "canal_squad": "#melhoria-continua-verticais",
+      "squad_planilha": "Bills",
+      "responsavel_cxm": "Patty",
+      "user_id_slack": "U019WQT2KFU"
+    },
+    {
+      "squad": "Boleto de Cobranca",
+      "canal_squad": "#melhoria-continua-verticais",
+      "squad_planilha": "Bills",
+      "responsavel_cxm": "Patty",
+      "user_id_slack": "U019WQT2KFU"
+    },
+    {
+      "squad": "Recarga de Celular",
+      "canal_squad": "#melhoria-continua-verticais",
+      "squad_planilha": "Transporte e TopUp",
+      "responsavel_cxm": "Patty",
+      "user_id_slack": "U019WQT2KFU"
+    },
+    {
+      "squad": "Pix",
+      "canal_squad": "#pixcc-home-raf-cx",
+      "squad_planilha": "PIX",
+      "responsavel_cxm": "Eduardo Reis",
+      "user_id_slack": "U0BG3PP3Q6Q",
+      "canal_planilha": "#squad-pix-cashin",
+      "nota": "Planilha lista #squad-pix-cashin para PIX; o report semanal continua indo para #pixcc-home-raf-cx (canais.json). Decidir se o canal da squad de Pix muda."
+    },
+    {
+      "squad": "Pix CC",
+      "canal_squad": "#pixcc-home-raf-cx",
+      "squad_planilha": "PIX CC",
+      "responsavel_cxm": "Eduardo Reis",
+      "user_id_slack": "U0BG3PP3Q6Q"
+    },
+    {
+      "squad": "RAF",
+      "canal_squad": "#pixcc-home-raf-cx",
+      "squad_planilha": "Home, RAF e Landing Pages",
+      "responsavel_cxm": "Eduardo Reis",
+      "user_id_slack": "U0BG3PP3Q6Q"
+    },
+    {
+      "squad": "Emprestimo Pessoal",
+      "canal_squad": "#squad_loan_seguimento",
+      "squad_planilha": "Lending",
+      "responsavel_cxm": "Patty",
+      "user_id_slack": "U019WQT2KFU"
+    },
+    {
+      "squad": "Emprestimo Consignado",
+      "canal_squad": "#squad_loan_seguimento",
+      "squad_planilha": "Consignado",
+      "responsavel_cxm": "Patty",
+      "user_id_slack": "U019WQT2KFU",
+      "canal_planilha": "#exec_consigbull",
+      "nota": "Planilha lista #exec_consigbull para Consignado; o report semanal continua em #squad_loan_seguimento (canais.json). Decidir se o canal muda."
+    },
+    {
+      "squad": "Tap to Pay",
+      "canal_squad": "#subacquirer-cx",
+      "squad_planilha": "Tap to Pay",
+      "responsavel_cxm": "Alexandre Luz",
+      "user_id_slack": "U03ABV9BG1F"
+    },
+    {
+      "squad": "Link de Pagamento",
+      "canal_squad": "#subacquirer-cx",
+      "squad_planilha": "Acquirer (inferido)",
+      "responsavel_cxm": "Alexandre Luz",
+      "user_id_slack": "U03ABV9BG1F",
+      "nota": "Link de Pagamento nao aparece na planilha; atribuido ao Alexandre por compartilhar o canal #subacquirer-cx com Tap to Pay e Acquirer. Confirmar."
+    }
+  ],
+  "squads_da_planilha_fora_do_escopo_desta_routine": {
+    "descricao": "Squads que existem na planilha mas nao correspondem a nenhuma das verticais monitoradas hoje -- mantido aqui para quando/se a Routine expandir escopo",
+    "itens": [
+      {
+        "squad_planilha": "Merchants",
+        "canal": "#b2b-cx",
+        "responsavel_cxm": "Alexandre Luz",
+        "user_id_slack": "U03ABV9BG1F"
+      },
+      {
+        "squad_planilha": "Acquirer",
+        "canal": "#subacquirer-cx",
+        "responsavel_cxm": "Alexandre Luz",
+        "user_id_slack": "U03ABV9BG1F"
+      },
+      {
+        "squad_planilha": "Checkout",
+        "canal": "#investments-e-cx",
+        "responsavel_cxm": "Eduardo Reis",
+        "user_id_slack": "U0BG3PP3Q6Q"
+      },
+      {
+        "squad_planilha": "Seguros",
+        "canal": "#proj-seguros",
+        "responsavel_cxm": "Eduardo Reis",
+        "user_id_slack": "U0BG3PP3Q6Q"
+      },
+      {
+        "squad_planilha": "Open Finance",
+        "canal": "#melhoria-continua-verticais",
+        "responsavel_cxm": "Patty",
+        "user_id_slack": "U019WQT2KFU"
+      },
+      {
+        "squad_planilha": "Experiência da Marca",
+        "canal": null,
+        "situacao": "Criar",
+        "responsavel_cxm": "Artur"
+      },
+      {
+        "squad_planilha": "Campanhas e Parcerias",
+        "canal": "#partnerships_cx",
+        "responsavel_cxm": "Artur"
+      },
+      {
+        "squad_planilha": "Payments",
+        "canal": "#cx-payments",
+        "responsavel_cxm": "Artur"
+      }
+    ]
+  },
+  "fallback_sem_responsavel": {
+    "acao": "enviar o alerta normalmente, sem marcar ninguem (nem @pessoa nem <!here>)",
+    "quando_aplicar": "Quando responsavel_cxm = 'On Demand' ou a vertical nao estiver mapeada no arquivo",
+    "sinalizar_no_alerta": "Indicar no corpo do alerta que a vertical nao tem responsavel fixo mapeado, sem tentar notificar ninguem por padrao"
+  }
+}

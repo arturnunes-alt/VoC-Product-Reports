@@ -1,0 +1,32 @@
+<div id="px-root">
+  <header class="px-top">
+    <div>
+      <h1>Experiência do Produto RecargaPay</h1>
+      <p id="px-asof">Carregando dados…</p>
+    </div>
+    <button type="button" class="px-btn" id="px-export" title="Exporta em CSV a tabela de indicadores exibida (respeita squad, sub-produto e filtros)">Exportar indicadores (CSV)</button>
+  </header>
+
+  <div class="px-banner" id="px-preview" hidden></div>
+  <div id="px-alerts"></div>
+
+  <div class="px-controls" id="px-controls">
+    <div class="px-seg" id="px-gran" role="group" aria-label="Granularidade">
+      <button type="button" data-gran="dia">Dia</button>
+      <button type="button" data-gran="semana">Semana</button>
+      <button type="button" data-gran="mes">Mês</button>
+    </div>
+    <div class="px-field"><span>Períodos exibidos</span><div class="px-chips" id="px-nchips"></div></div>
+    <label class="px-check"><input type="checkbox" id="px-hide-open" checked> Ocultar período em andamento</label>
+  </div>
+
+  <nav class="px-rail" id="px-rail" aria-label="Squads de produto"></nav>
+  <div class="px-subrail" id="px-subrail"></div>
+
+  <main id="px-main"></main>
+
+  <details class="px-notes" id="px-notes">
+    <summary>Como ler este painel · definições, fontes e limitações</summary>
+    <div class="in" id="px-notes-body"></div>
+  </details>
+</div>

@@ -1,0 +1,14 @@
+{
+  "squad": "transporte",
+  "rot": "Semana NN",
+  "periodo": "DD/MM – DD/MM/AAAA",
+  "meta": "Dados até DD/MM · comparações seg–sáb vs seg–sáb · report publicado em DD/MM",
+  "pub": "AAAA-MM-DD",
+  "resumo": "[1 a 3 frases com os números-chave da semana, só o que está nos dados. Use <b>negrito</b> só em números.]",
+  "alertas": [
+    {"t": "[motivo em pico]", "v": "+NN%", "bot": "parcial", "n": "NN", "ctx": "vs NN na semana anterior", "txt": "[o que explica, com fonte e data quando houver]", "aberto": "<b>Em aberto:</b> [pendência da squad]"}
+  ],
+  "monit": [{"t": "[tema em observação]", "txt": "[por que observar]"}],
+  "ok": ["[indicador dentro do esperado]"],
+  "eventos": [{"d": "DD/MM", "tag": "[Produto|Incidente|Central|Bot]", "g": "", "txt": "[o que aconteceu; fonte e data]"}]
+}

@@ -1,0 +1,231 @@
+{
+ "squad": "seguros",
+ "rot": "Semana 40",
+ "periodo": "28/09 – 04/10/2026",
+ "meta": "Report gerado a partir dos dados da base de CX (semana completa seg–dom, 28/09–04/10); Seguros ainda não tem report no Slack · publicado em 09/10",
+ "pub": "2026-10-09",
+ "resumo": "Seguros teve <b>277 tickets humanos</b> na semana (+64% vs 169), puxados por pedidos de estorno (160, +76%) e de cancelamento (96, +41%). A principal causa é “não achou a opção no app” (106 vs 57). Os relatos citam cobrança de seguro que o cliente diz não ter contratado. A retenção do bot subiu para <b>76,0%</b> (69,7%) e a Central de Ajuda teve <b>8.009 visitas</b> (+80%). CSAT N1 em <b>78,4%</b> (n=37).",
+ "alertas": [
+  {
+   "t": "Quer estorno do seguro",
+   "v": "+76%",
+   "bot": "",
+   "n": "160",
+   "ctx": "vs 91 na semana anterior",
+   "txt": "Causa raiz principal: não achou a opção no app (106 vs 57). Erro no link de reembolso: 17 (vs 6). Nos resumos de conversas lidos (amostra de 6), os relatos citam cobrança de seguro não solicitado e dificuldade de cancelar e obter reembolso.",
+   "aberto": "<b>Em aberto:</b> confirmar com o time de Seguros se a opção de estorno/cancelamento está acessível no app e como o seguro é oferecido na contratação."
+  },
+  {
+   "t": "Quer cancelar o seguro",
+   "v": "+41%",
+   "bot": "",
+   "n": "96",
+   "ctx": "vs 68 na semana anterior",
+   "txt": "Contratou por acidente e quer cancelar fora do período de gratuidade: 41 (vs 24); dentro do período de gratuidade: 35 (vs 34). “Não precisa mais de seguro”: 4.",
+   "aberto": ""
+  }
+ ],
+ "monit": [
+  {
+   "t": "CSAT N1: 78,4% (n=37)",
+   "txt": "abaixo da meta de 80%, acima do piso de 75%. Semana anterior: 95,0% (n=20)."
+  },
+  {
+   "t": "Pico diário em 03/10",
+   "txt": "“quer cancelar o seguro” teve 14 tickets (+75% vs baseline) [[alerta diário #lideres-cx-e-cxm]]."
+  },
+  {
+   "t": "Solicita estorno de todas as cobranças: 30 (vs 25)",
+   "txt": "mesmo tema de estorno, sem causa nova."
+  },
+  {
+   "t": "Prestamista sem tickets humanos na semana",
+   "txt": "todos os tickets humanos de Seguros são de Proteção Pix e Cartões."
+  },
+  {
+   "t": "Sem NPS transacional para Seguros na base",
+   "txt": "a satisfação aqui vem do CSAT do atendimento."
+  }
+ ],
+ "ok": [
+  "Retenção do bot 76,0% (mínimo de 45%)",
+  "Volume de dúvidas e sinistros residual (11 tickets)"
+ ],
+ "kpis": [
+  {
+   "l": "Tickets humanos",
+   "v": "277",
+   "d": "▲ 63,9% vs sem. ant.",
+   "sub": "semana completa",
+   "serie": [
+    137,
+    224,
+    233,
+    169,
+    277
+   ],
+   "ref": null,
+   "st": null,
+   "sc": null,
+   "cls": "up"
+  },
+  {
+   "l": "Contact rate",
+   "v": "1,57%",
+   "d": "▲ 0,60 pp vs sem. ant. (0,97%)",
+   "sub": "contatos totais ÷ TX",
+   "serie": [
+    1.22,
+    0.78,
+    1.01,
+    0.97,
+    1.57
+   ],
+   "ref": null,
+   "st": null,
+   "sc": null,
+   "cls": "up"
+  },
+  {
+   "l": "CSAT N1",
+   "v": "78,4%",
+   "d": "▼ 16,6 pp vs sem. ant. (95,0%)",
+   "sub": "Meta 80% · n=37",
+   "serie": [
+    94.1,
+    83.3,
+    84.6,
+    95.0,
+    78.4
+   ],
+   "ref": 80,
+   "st": "Margem curta",
+   "sc": "warn",
+   "cls": "up"
+  },
+  {
+   "l": "Retenção do bot",
+   "v": "76,0%",
+   "d": "▲ 6,3 pp vs sem. ant. (69,7%)",
+   "sub": "retidos ÷ atendimentos no bot",
+   "serie": [
+    70.8,
+    67.4,
+    70.1,
+    69.7,
+    76.0
+   ],
+   "ref": null,
+   "st": null,
+   "sc": null,
+   "cls": "down"
+  },
+  {
+   "l": "Central de Ajuda",
+   "v": "8.009",
+   "d": "▲ 80% visitas únicas",
+   "sub": "5 semanas",
+   "serie": [
+    4043,
+    5176,
+    5187,
+    4439,
+    8009
+   ],
+   "ref": null,
+   "st": null,
+   "sc": null,
+   "cls": "up"
+  }
+ ],
+ "funil": {
+  "partes": [
+   {
+    "l": "RecargaBot (retido)",
+    "n": 705,
+    "p": 71.8
+   },
+   {
+    "l": "N1 humano",
+    "n": 277,
+    "p": 28.2,
+    "wow": "+63,9%"
+   }
+  ],
+  "total": 982,
+  "nota": "Humano + bot retido (N2 não separado nesta base). Tickets humanos: Proteção Pix e Cartões 277 · Prestamista 0."
+ },
+ "motivos": [
+  {
+   "t": "Quer estorno do seguro",
+   "n": 160,
+   "ant": 91,
+   "var": "+76%"
+  },
+  {
+   "t": "Quer cancelar o seguro",
+   "n": 96,
+   "ant": 68,
+   "var": "+41%"
+  },
+  {
+   "t": "Quer tirar dúvidas sobre o seguro",
+   "n": 10,
+   "ant": 7,
+   "var": "+43%"
+  },
+  {
+   "t": "Não consegue contratar o seguro",
+   "n": 5,
+   "ant": 2,
+   "var": "+150%"
+  }
+ ],
+ "causas": [
+  {
+   "t": "Estorno: não achou a opção no app",
+   "n": 106,
+   "ant": 57,
+   "bot": "",
+   "txt": "O cliente quer o estorno e não encontra a opção no app."
+  },
+  {
+   "t": "Cancelar: contratou por acidente, fora do período de gratuidade",
+   "n": 41,
+   "ant": 24,
+   "bot": "",
+   "txt": "Cliente que contratou sem querer e já passou da gratuidade."
+  },
+  {
+   "t": "Estorno de todas as cobranças",
+   "n": 30,
+   "ant": 25,
+   "bot": "",
+   "txt": "Pedido de devolução de todas as cobranças do seguro."
+  },
+  {
+   "t": "Estorno: erro no link de reembolso",
+   "n": 17,
+   "ant": 6,
+   "bot": "",
+   "txt": "Falha no link de reembolso, mais que o dobro da semana anterior."
+  }
+ ],
+ "eventos": [
+  {
+   "d": "03/10",
+   "tag": "Pico",
+   "g": "hot",
+   "txt": "“Quer cancelar o seguro”: 14 tickets no dia (+75% vs baseline) [[alerta diário #lideres-cx-e-cxm]]."
+  },
+  {
+   "d": "semana",
+   "tag": "Executivo",
+   "g": "",
+   "txt": "O Report Executivo da semana sinaliza Seguros em alta (+59% em tickets, seg–sáb), com pedidos de estorno e cancelamento e alegação de contratação sem anuência [[Report Executivo S40]]."
+  }
+ ],
+ "rodape": {
+  "fonte": "Fonte: Report VoC · Seguros · Semana 40 (09/10/2026) · base de CX e resumos de conversas · Hub VoC · CXM - Briefing de Suporte"
+ }
+}
