@@ -104,7 +104,7 @@
   },
   "canais": [
     {
-      "slack_channel": "#the-cxm-house",
+      "slack_channel": "#cxm-team",
       "slack_channel_leitura": [
         "#lideres-cx-e-cxm",
         "#comunicados_e_atualizações_cx"
@@ -414,19 +414,39 @@
         "#lideres-cx-e-cxm",
         "#comunicados_e_atualizações_cx"
       ],
-      "tipo": "produto",
-      "nome_report": "Report de VoC - Emprestimo",
-      "verticais": [
-        "Emprestimo",
-        "Credito Consignado"
-      ],
-      "tags_zendesk": [
-        "emprestimo_",
-        "emprestimo_credito_consignado"
-      ],
-      "aberturas_especificas": [
-        "emprestimo_pessoal_vs_consignado",
-        "perfil_new_newnew_repeat"
+      "tipo": "produto_multiplo",
+      "produtos": [
+        {
+          "nome_report": "Report de VoC - Emprestimo Pessoal",
+          "verticais": [
+            "Emprestimo Pessoal"
+          ],
+          "tags_zendesk": [
+            "emprestimo_"
+          ],
+          "agg_overview_vertical": "emprestimo",
+          "dim_zendesk_vertical": "empréstimo",
+          "nota": "Vertical 'emprestimo' em agg_overview e 'empréstimo' em dim_zendesk_tickets_summary — NAO inclui consignado (vertical propria). Tag live 'emprestimo_' nao confirmada como exclusiva (nao validado se tickets de consignado tambem carregam essa tag) — para numero oficial usar a vertical do Databricks, nao a tag.",
+          "aberturas_especificas": [
+            "collateral_wallet_debito_automatico",
+            "perfil_new_newnew_repeat"
+          ]
+        },
+        {
+          "nome_report": "Report de VoC - Emprestimo Consignado",
+          "verticais": [
+            "Emprestimo Consignado"
+          ],
+          "tags_zendesk": [
+            "emprestimo_credito_consignado"
+          ],
+          "agg_overview_vertical": "emprestimo consignado",
+          "dim_zendesk_vertical": "empréstimo consignado",
+          "nota": "Vertical propria em agg_overview ('emprestimo consignado') e em dim_zendesk_tickets_summary ('empréstimo consignado'). Volume muito menor que o pessoal (~650 vs ~10.950 tickets de 01/08 a set/2026 em dim_zendesk_tickets_summary) — amostras semanais pequenas, cuidado com variacao percentual alta sobre base baixa.",
+          "aberturas_especificas": [
+            "perfil_new_newnew_repeat"
+          ]
+        }
       ]
     },
     {
@@ -493,7 +513,7 @@
     "descricao": "Coleta consolidada de eventos/incidentes de TODOS os canais antes de gerar qualquer report -- permite correlacao cruzada entre squads",
     "janela_dias": 14,
     "canais_leitura_obrigatoria": [
-      "#the-cxm-house",
+      "#cxm-team",
       "#lideres-cx-e-cxm",
       "#comunicados_e_atualizações_cx",
       "#account_cx",
