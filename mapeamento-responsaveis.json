@@ -108,9 +108,16 @@
       "user_id_slack": "U07SM28PHFG"
     },
     {
-      "squad": "Emprestimo",
+      "squad": "Emprestimo Pessoal",
       "canal_squad": "#squad_loan_seguimento",
-      "squad_planilha": "Lending / Consignado",
+      "squad_planilha": "Lending",
+      "responsavel_cxm": "Cassio Mitherhofer",
+      "user_id_slack": "U07SM28PHFG"
+    },
+    {
+      "squad": "Emprestimo Consignado",
+      "canal_squad": "#squad_loan_seguimento",
+      "squad_planilha": "Consignado",
       "responsavel_cxm": "Cassio Mitherhofer",
       "user_id_slack": "U07SM28PHFG"
     },
