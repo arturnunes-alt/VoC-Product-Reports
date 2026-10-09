@@ -11,7 +11,7 @@ janela de revisão humana entre elas.
 ## Arquitetura — duas Routines, uma janela de revisão humana
 
 ```
-08:00 BRT ──► Routine A (Rascunho) ──► #the-voice-cx (20 sets, marcados [RASCUNHO → #canal])
+08:00 BRT ──► Routine A (Rascunho) ──► #the-voice-cx (21 sets, marcados [RASCUNHO → #canal])
                                               │
                                     janela de comentários do time
                                          (até 12:00 BRT)
@@ -24,7 +24,7 @@ janela de revisão humana entre elas.
                                     canais reais de cada squad (versão final)
 ```
 
-**Routine A (Rascunho):** gera os 20 sets de report normalmente e envia **todos** para
+**Routine A (Rascunho):** gera os 21 sets de report normalmente e envia **todos** para
 `#the-voice-cx`, cada um com o cabeçalho `[RASCUNHO → #canal-real]`. Isso abre uma janela
 para o time comentar ou apontar ajustes diretamente na thread de cada set, até 12h.
 
@@ -104,21 +104,19 @@ VALIDAÇÃO INICIAL (antes da Fase 0)
 Confirme que as tools dos 3 MCPs abaixo estão de fato registradas nesta sessão (busque
 por nome exato de cada uma).
 
-⚠️ Zendesk (primário + fallback) segue uma regra diferente dos outros dois — ver
-"MODO DEGRADADO — SOMENTE DATABRICKS" no SKILL.md. Resumo: se **nenhum dos dois**
-caminhos de Zendesk (AgentCore nem MCP-Proxy-RecargaPay) retornar tools utilizáveis após
-2 tentativas, **não aborte a execução** — prossiga em modo degradado, usando só
-Databricks para tudo (volume, NPS, CSAT, rankings de motivo/causa raiz, retenção de bot,
-Central de Ajuda e a leitura qualitativa via `fat_tickets_transcription_summary`/
-`fat_tickets_transcription`, que substituem a leitura ao vivo de ticket). Isso cobre a
-maior parte do pipeline normalmente — Zendesk ao vivo só é usado hoje para validação
-pontual de tag e leitura de corpo de ticket em tempo real, ambas substituíveis por
-Databricks.
+**Databricks e Slack são obrigatórios e bloqueantes.** Se qualquer um dos dois não
+retornar tools utilizáveis, encerre a execução sem dados parciais ou inventados,
+registre exatamente o que falhou e notifique.
 
-Databricks e Slack continuam sendo bloqueantes de verdade: se qualquer um dos dois não
-retornar tools utilizáveis, aí sim encerre a execução sem dados parciais ou inventados,
-registre exatamente o que falhou e notifique. Isso vale especialmente para o Slack MCP,
-já que sem ele não há como entregar nenhum report, nem o degradado.
+**Zendesk NUNCA é motivo para abortar a execução — é complemento, não obrigatório.**
+Se o MCP Gateway AWS AgentCore (`zendesk___zendesk`) não estiver disponível, tentar o
+fallback `MCP-Proxy-RecargaPay` (tool `zendesk`). Se **nenhum dos dois** estiver
+disponível, seguir direto para o "MODO DEGRADADO — SOMENTE DATABRICKS" do SKILL.md —
+sem nova tentativa, sem hesitação, sem encerrar a execução. A maior parte do pipeline já
+roda 100% em Databricks independente de Zendesk (NPS, CSAT, volume, retenção de bot,
+Central de Ajuda, rankings de motivo/causa raiz) — Zendesk ao vivo serve só para
+aprofundar a leitura qualitativa, que tem substituto direto via
+`fat_tickets_transcription_summary` no próprio Databricks.
 
 Execute o pipeline completo de reports VoC conforme as instruções do SKILL.md deste
 repositório, respeitando o MODO=RASCUNHO definido na seção "MODO DE EXECUÇÃO" do SKILL.md.
@@ -162,14 +160,15 @@ são skills de tempo real ("hoje/agora"); esta Routine sempre cobre período fec
 (semana anterior), que é sempre roteado para cx-product-insights.
 
 MCPs — únicas integrações permitidas
-- Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk) — PRIMÁRIO
-- Zendesk — FALLBACK AUTORIZADO (Ago/2026): MCP-Proxy-RecargaPay (tool zendesk), usar
-  **somente** se o primário falhar de forma confirmada (erro de conexão reproduzido em
-  pelo menos 2 tentativas, não apenas ausência de tool na primeira checagem — ver nota
-  abaixo). Sinalizar sempre no log/notificação interna quando este fallback for usado —
-  nunca usar silenciosamente sem registrar.
-- Dados: MCP Data - RecargaPay (databricks_run_query / databricks_preview_query)
-- Contexto e envio: Slack MCP
+- Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk) — PRIMÁRIO, nunca
+  bloqueante (ver "Hierarquia de importância" no SKILL.md)
+- Zendesk — FALLBACK AUTORIZADO: MCP-Proxy-RecargaPay (tool zendesk), usar
+  imediatamente se o primário não retornar tools utilizáveis — sem necessidade de
+  múltiplas tentativas antes de decidir isso. Se nenhum dos dois funcionar, seguir para
+  o MODO DEGRADADO (SKILL.md) — nunca abortar por isso. Sinalizar sempre no
+  log/notificação interna quando o fallback ou o modo degradado forem usados.
+- Dados: MCP Data - RecargaPay (databricks_run_query / databricks_preview_query) — CRÍTICO, bloqueante
+- Contexto e envio: Slack MCP — CRÍTICO, bloqueante
 ⛔ Não realizar chamadas HTTP diretas a domínios externos.
 
 FALLBACK DE ZENDESK — quando usar
@@ -182,7 +181,7 @@ infraestrutura, não intermitência de sessão — autorizado usar o MCP-Proxy-R
 isso claramente na notificação interna e, se o modo permitir, sinalizar de forma
 discreta nos reports gerados que os dados de Zendesk vieram da integração de fallback.
 Nunca abortar a execução só porque o gateway primário falhou, se o fallback autorizado
-estiver funcional — o objetivo desta regra é justamente evitar que os 20 reports deixem
+estiver funcional — o objetivo desta regra é justamente evitar que os 21 reports deixem
 de ser gerados por uma falha pontual de um único gateway.
 
 FILTROS CRÍTICOS — sempre usar a versão corrigida
@@ -192,7 +191,7 @@ lista completa de exclusões em cx-orchestrator-reference/references/exclusions.
 se ausente, em skill-zendesk-cx.md §5.
 
 EXECUÇÃO
-Execute as fases em sequência sem interrupção conforme o MODO=RASCUNHO: gere os 20 sets
+Execute as fases em sequência sem interrupção conforme o MODO=RASCUNHO: gere os 21 sets
 de report e envie TODOS para #the-voice-cx (ID C060F2QUJCD), cada um com o cabeçalho
 [RASCUNHO → #canal-real] e o convite a comentários até 12h, conforme especificado no
 SKILL.md Fase 4. Na Fase 1, ler os últimos 14 dias de TODOS os canais de destino e montar
@@ -221,16 +220,18 @@ MODO=VALIDACAO
 VALIDAÇÃO INICIAL (antes da Fase 0)
 Confirme que as tools dos 3 MCPs abaixo estão de fato registradas nesta sessão.
 
-⚠️ Mesma regra da Routine A para Zendesk: se **nenhum dos dois** caminhos (AgentCore nem
-MCP-Proxy-RecargaPay) retornar tools utilizáveis após 2 tentativas, **não aborte** —
-prossiga em modo degradado, só com Databricks (ver "MODO DEGRADADO — SOMENTE DATABRICKS"
-no SKILL.md). Isso é ainda mais relevante aqui: sem isso, a squad simplesmente não recebe
-report nenhum naquela semana, mesmo com dado suficiente disponível via Databricks para
-publicar algo com qualidade.
+**Databricks e Slack são obrigatórios e bloqueantes.** Se qualquer um dos dois não
+retornar tools utilizáveis, encerre a execução, registre o que falhou e notifique. Isso
+é crítico nesta Routine, já que ela publica a versão FINAL nos canais reais das squads.
 
-Databricks e Slack continuam bloqueantes de verdade — se qualquer um dos dois falhar,
-encerre a execução, registre o que falhou e notifique. Isso é crítico nesta Routine, já
-que ela publica a versão FINAL nos canais reais das squads.
+**Zendesk NUNCA é motivo para abortar a execução — nem aqui, nem na Routine A. É
+complemento, não obrigatório.** Se o MCP Gateway AWS AgentCore (`zendesk___zendesk`) não
+estiver disponível, tentar o fallback `MCP-Proxy-RecargaPay` (tool `zendesk`). Se
+**nenhum dos dois** estiver disponível, seguir direto para o "MODO DEGRADADO — SOMENTE
+DATABRICKS" do SKILL.md — sem nova tentativa, sem hesitação, sem encerrar a execução. Sem
+esta regra, a squad simplesmente não recebe report nenhum naquela semana, mesmo havendo
+dado suficiente via Databricks para publicar algo com qualidade — essa é exatamente a
+falha que esta instrução existe para evitar.
 
 Execute o pipeline completo de reports VoC conforme as instruções do SKILL.md deste
 repositório, respeitando o MODO=VALIDACAO definido na seção "MODO DE EXECUÇÃO" do SKILL.md.
@@ -245,13 +246,15 @@ skill-databricks-mcp.md, skill-zendesk-cx.md, e as skills organizacionais listad
 SKILL.md (cx-product-insights, cx-orchestrator-reference, cx-helpcenter-impact).
 
 MCPs — únicas integrações permitidas
-- Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk) — PRIMÁRIO
-- Zendesk — FALLBACK AUTORIZADO (Ago/2026): MCP-Proxy-RecargaPay (tool zendesk), mesma
-  regra da Routine A — usar só após falha confirmada em 2 tentativas, nunca na primeira
-  ausência de tool. Sinalizar sempre no log/notificação interna. Como esta Routine
-  publica a versão final nos canais reais, aplicar o fallback com o mesmo rigor de
-  revalidação já usado no restante da Fase 0-3 — não é motivo para relaxar nenhuma
-  outra checagem.
+- Zendesk: [TEST] MCP Gateway AWS AgentCore (tool zendesk___zendesk) — PRIMÁRIO, nunca
+  bloqueante (ver "Hierarquia de importância" no SKILL.md — mesma regra da Routine A)
+- Zendesk — FALLBACK AUTORIZADO: MCP-Proxy-RecargaPay (tool zendesk), usar
+  imediatamente se o primário não retornar tools utilizáveis — sem necessidade de
+  múltiplas tentativas. Se nenhum dos dois funcionar, seguir para o MODO DEGRADADO
+  (SKILL.md) — nunca abortar por isso, mesmo esta Routine publicando a versão final.
+  Sinalizar sempre no log/notificação interna.
+- Dados: MCP Data - RecargaPay (databricks_run_query / databricks_preview_query) — CRÍTICO, bloqueante
+- Contexto e envio: Slack MCP — CRÍTICO, bloqueante
 - Dados: MCP Data - RecargaPay (databricks_run_query / databricks_preview_query)
 - Contexto, leitura de rascunho/comentários e envio final: Slack MCP
 ⛔ Não realizar chamadas HTTP diretas a domínios externos.
@@ -261,7 +264,7 @@ FILTROS CRÍTICOS — mesmos da Routine A (ver skill-zendesk-cx.md e exclusions.
 EXECUÇÃO
 Execute as Fases 0 a 3 do zero — revalidar todos os dados com informação fresca, não
 reaproveitar números da Routine A. Em seguida, execute a Fase 3.5 (exclusiva do
-MODO=VALIDACAO): localizar em #the-voice-cx os 20 sets postados pela Routine A hoje
+MODO=VALIDACAO): localizar em #the-voice-cx os 21 sets postados pela Routine A hoje
 (marcador [RASCUNHO →]), ler cada thread por completo incluindo comentários do time, e
 classificá-los conforme o SKILL.md (correção factual, contexto adicional, discordância,
 pergunta em aberto). Na Fase 4, reconciliar os dados revalidados com o rascunho e os
@@ -339,8 +342,10 @@ qualquer forma (não é uma cópia do rascunho), só não há ajuste vindo de co
 
 **E se a Routine A falhar ou não rodar?**
 A Routine B detecta que não há rascunho em `#the-voice-cx` para aquele dia e prossegue
-gerando e publicando normalmente, como se estivesse em `MODO=RASCUNHO` só para aquele set
-— a publicação final não fica bloqueada por falha da primeira etapa.
+gerando e publicando normalmente **direto no canal real da squad** — nunca de volta para
+`#the-voice-cx` (isso recriaria um rascunho sem ninguém revisar). Só não há comentários
+do time para incorporar; o resto do pipeline roda igual e a publicação final não fica
+bloqueada por falha da primeira etapa.
 
 **Posso comentar depois das 12h?**
 O comentário ainda vai estar na thread do rascunho em `#the-voice-cx`, mas a Routine B já
