@@ -6,13 +6,13 @@ description: >
   de comentários do time. Routine B (Validação e Publicação) relê os rascunhos e
   comentários, revalida dados/eventos/datas/impactos, ajusta se necessário e publica a
   versão final nos canais reais de cada squad.
-version: "3.6"
+version: "3.7"
 model: "claude-sonnet-5"
 trigger_rascunho: "Toda segunda-feira às 08:00 BRT (11:00 UTC) — Routine A"
 trigger_validacao: "Toda segunda-feira às 12:15 BRT (15:15 UTC) — Routine B"
 maintainer: "Artur Nunes — artur.nunes@recargapay.com"
 mcp_primary: "AWS-AgentCore-MCP-Gateway (tool zendesk___zendesk)"
-mcp_secondary: "Slack MCP, MCP Data - RecargaPay (Databricks)"
+mcp_secondary: "Slack MCP, MCP Data - RecargaPay (Databricks + Arturito: painel 156 na Routine B)"
 ---
 
 # VoC Report Automation — RecargaPay
@@ -33,7 +33,7 @@ qual `MODO` está ativo — ver `README.md` para o texto exato de cada prompt.
 | Fases 0–3 | Executa normalmente (dados frescos) | Executa normalmente de novo (dados frescos — não reaproveitar do rascunho) |
 | Passo adicional | — | **Fase 3.5** — ler rascunho + comentários em `#the-voice-cx` |
 | Fase 4 — geração | Gera os 20 sets de report | Reconcilia dados frescos + rascunho + comentários do time |
-| Fase 4 — destino | **Todos** os 20 sets vão para `#the-voice-cx`, com cabeçalho `[RASCUNHO → #canal-real]` | Envia a versão final para o **canal real** de cada report |
+| Fase 4 — destino | **Todos** os 20 sets vão para `#the-voice-cx`, com cabeçalho `[RASCUNHO → #canal-real]` | **1º atualiza os reports de squad no painel 156** (Arturito) e **só depois** envia ao **canal real** a versão **objetiva** (destaques + alertas + links para os painéis) |
 | Objetivo | Abrir janela de revisão humana até 12h | Double-check + publicação final |
 
 As Fases 0 a 3 (leitura de skills, tabela de eventos, métricas oficiais, Zendesk) são
@@ -777,18 +777,25 @@ Processar os canais na ordem abaixo. Para cada canal:
 4. Postar o report completo como **thread reply** usando o `ts`
 5. Postar os alertas como **segunda thread reply** usando o mesmo `ts`
 
-**Ordem dentro de cada set (Out/2026):** raiz → Thread 1 (report) → Thread 2 (alertas) →
-**só depois** qualquer bloco adicional (ex.: bloco JSON de estrutura). Nunca postar o
-JSON/estrutura antes do report e dos alertas — em 12/10 o set 1 saiu fora dessa ordem.
-Concluir todas as respostas de um set antes de começar o próximo.
+**Ordem dentro de cada set:** raiz → Thread 1 → Thread 2. Concluir todas as respostas de um
+set antes de começar o próximo.
+
+**Nunca postar “Dados” no Slack (A e B) — Out/2026:** a parte de dados do painel 156 — o
+JSON de cada report de squad (blocos `data-px-report` com `resumo`, `alertas`, `kpis`,
+`funil`, `motivos`, `causas`, `recl`, `mencoes`, `cenario`, `eventos`, `atualiz`,
+`rodape`…), tabelas cruas de KPI e qualquer estrutura de dados — **não vai para o Slack em
+nenhuma das duas Routines**. O JSON existe só para alimentar o painel (gravado pela Routine B,
+ver “ATUALIZAÇÃO DO PAINEL 156”). Em 12/10 o JSON foi postado nas threads (set 1 fora de ordem,
+rodapé do set 14 incompleto): isso deixa de existir. Se o prompt/README ainda pedir o JSON no
+Slack, **a regra desta seção prevalece**.
 
 **Integridade de texto (Out/2026) — evitar cópia errada:** em 12/10 o set 13 saiu com a
 nota de Lojas de apps copiada errada e o set 14 com o rodapé do JSON incompleto (ambos
 corrigidos por resposta na thread). Regras:
 1. Montar cada mensagem **uma única vez** (variável) e reutilizar por referência os blocos
-   repetidos (nota de Lojas de apps, rodapé do JSON, links) — nunca redigitar nem recopiar.
-2. **JSON:** validar com `json.loads`/`JSON.parse` e conferir que termina no delimitador/
-   rodapé previsto antes de enviar.
+   repetidos (nota de Lojas de apps, links dos painéis) — nunca redigitar nem recopiar.
+2. **JSON do painel 156** (nunca vai ao Slack): validar com `json.loads`/`JSON.parse` antes
+   de gravar no painel e conferir que o bloco termina com o rodapé (`rodape`) previsto.
 3. **Lojas de apps:** os números vêm do resultado da query (`prod.cx.fat_app_reviews`, marca
    RecargaPay) e seguem a métrica do painel 141 — **% de reviews 4–5★** como principal, **%
    1–2★** de apoio e a nota média só como complemento; comparar nota, % e n com a fonte
@@ -800,6 +807,56 @@ corrigidos por resposta na thread). Regras:
    correção na própria thread e registro na notificação interna.
 
 ---
+
+### CONTEÚDO DAS MENSAGENS POR MODO (Out/2026)
+
+| | **MODO=RASCUNHO (A)** | **MODO=VALIDACAO (B) — versão objetiva** |
+|---|---|---|
+| Quais | Todos os 20 sets, como hoje | `#lideres-cx-e-cxm` (executivo) e **todos os canais de squad/produto**. `#the-cxm-house` (Report Geral) segue como na A, acrescentando só o link do painel (ver abaixo) |
+| Raiz | Como hoje | Resumo de 2–3 linhas + links (abaixo) |
+| Thread 1 | Report completo (template) | **Destaques**: 3–5 bullets, sem tabelas, sem KPIs completos e sem causas raiz detalhadas |
+| Thread 2 | Alertas (template) | **Alertas**: só os 🔴/🟠 disparados, em até 2 linhas cada; sem linhas ✅ (se nenhum: `✅ Nenhum alerta nesta semana.`) |
+| Dados / JSON | **Nunca no Slack** | **Nunca no Slack** |
+
+**Direcionamento aos painéis (B):** o detalhe que saiu do Slack vive no Arturito. Incluir na
+raiz, em linhas separadas:
+- `🔗 Report da squad (painel 156): https://optimus.recargapay.com/PHP/dashboard_view.php?id=156&r={rota}/rep`
+- `📊 Indicadores, NPS e Suporte da squad (painel 156): https://optimus.recargapay.com/PHP/dashboard_view.php?id=156&r={rota}` (abas `ind`, `nps`, `sup`)
+- `🔗 Experiência RecargaPay (painel 141): https://optimus.recargapay.com/PHP/dashboard_view.php?id=141`
+- manter os links já existentes (Hub VoC; Briefing de Suporte, id=246).
+`{rota}` = `squad[/sub]` da squad no painel (ex.: `cartao`, `pix/cartao`, `fraude/conta desativada`,
+`outros/topup`); o executivo usa `geral/executivo`. A **chave de cada report no painel** é o
+valor de `data-px-report` (ex.: `cartao`, `account`, `cdb`, `emprestimo`, `link`, `pix`,
+`pix/cartao`, `seguros`, `t2p`, `transporte`, `fraude/carteira desativada`,
+`fraude/chargeback recovery`, `fraude/conta desativada`, `outros/cashback e rendimento`,
+`outros/movimentações financeiras`, `outros/raf`, `outros/topup`, `outros/utilities`,
+`geral/executivo`). **Registrar em `canais.json`, para cada canal/produto, o campo
+`painel156_rota`** (ainda não existe no repositório que pude ler). No Report Geral, o link
+vai para a visão geral (`...&r=geral`). Só mencionar o link de um report **depois** de
+confirmado no painel (ver abaixo).
+
+### ATUALIZAÇÃO DO PAINEL 156 (apenas MODO=VALIDACAO) — **antes de qualquer envio ao Slack**
+
+A Routine B é a dona dos reports de squad no painel 156. Fluxo obrigatório, nesta ordem:
+1. **Gerar** os reports finais (Fases 0–3.5) e, para cada squad/produto + `geral/executivo`,
+   montar o JSON do report no mesmo formato dos blocos `data-px-report` já existentes no painel
+   (campos: `squad`, `rot`, `periodo`, `meta`, `pub`, `resumo`, `alertas`, `monit`, `ok`,
+   `kpis`, `funil`, `motivos`, `causas`, `recl`, `mencoes`, `cenario`, `eventos`, `atualiz`,
+   `rodape`). Validar cada JSON por parse.
+2. **Ler** o painel (`arturito_get_dashboard`, id 156) imediatamente antes de editar — nunca
+   gravar sobre uma versão antiga.
+3. **Gravar** os blocos atualizados (payload completo do `html` do painel; não alterar
+   `css`/`js`/queries) com `arturito_update_dashboard`, com `rationale_md` curto.
+4. **Ler de volta** (`arturito_get_dashboard`) e conferir: (a) todos os blocos da semana
+   presentes; (b) `pub` = data da execução e `rot`/`periodo` = semana reportada; (c) o resto do
+   `html`/`css`/`js` **idêntico** ao lido no passo 2 (comparação de hash/byte a byte).
+5. **Só então** enviar ao Slack (Fase 4). A mensagem de uma squad só é postada se o report
+   dessa squad foi confirmado no painel.
+**Falha:** se a gravação ou a conferência falhar para uma squad, tentar de novo **uma vez**;
+persistindo, **não** publicar a mensagem final dessa squad no canal real (o link apontaria para
+um report desatualizado) — manter o rascunho da A e registrar na notificação interna, sem
+nenhuma menção nos canais. Se a falha for geral (painel inacessível), enviar nada aos canais
+reais e notificar o dono do processo.
 
 ### ORDEM DE ENVIO
 
@@ -835,6 +892,10 @@ Seguir o TEMPLATE DE ALERTAS (seção abaixo).
 
 #### 2. `#lideres-cx-e-cxm` — Report Executivo
 
+> **Out/2026 — MODO=VALIDACAO:** usar a **versão objetiva** (ver “CONTEÚDO DAS MENSAGENS POR
+> MODO”): Thread 1 = 3–5 destaques de negócio; Thread 2 = só alertas críticos 🔴; raiz com os
+> links do painel (`geral/executivo`). Os templates abaixo valem para `MODO=RASCUNHO`.
+
 **Mensagem raiz:** Igual ao `#the-cxm-house` (incluindo `<!here>`).
 
 **Thread Reply 1 — Report executivo condensado:**
@@ -849,6 +910,10 @@ Incluir contexto de eventos do Slack quando relevante 💬.
 ---
 
 #### 3–11. Canais de produto
+
+> **Out/2026 — MODO=VALIDACAO:** versão **objetiva** (destaques + alertas + links para o
+> painel 156 e para o 141); sem report completo e sem JSON no Slack. Os templates abaixo valem
+> para `MODO=RASCUNHO`.
 
 Para cada canal de produto (na ordem: `#account_cx`, `#cc-produto-e-cx`,
 `#cx_fraud` × 3 produtos, `#investments-e-cx` × 3 produtos,
@@ -1290,7 +1355,8 @@ Antes de encerrar a Routine, verificar:
 - [ ] Zendesk: tool localizada pelo sufixo `zendesk___zendesk` no **AWS-AgentCore-MCP-Gateway** (2 tentativas) antes de qualquer fallback/modo degradado
 - [ ] Gate de cobertura/freshness de `fat_tickets_transcription_summary` executado; leitura qualitativa feita via Zendesk (ou limitada conforme a regra do gate)
 - [ ] Perfil New/NewNew/Repeat calculado com `fat_new_users` + `fat_cross_new_users`; “Movimentações Financeiras” coberto pela regex suplementar
-- [ ] Ordem dentro de cada set respeitada (raiz → report → alertas → JSON) e integridade de texto conferida (JSON validado, Lojas de apps conferida com a fonte, leitura de volta)
+- [ ] **Nenhum JSON/“Dados” do painel 156 foi postado no Slack** (A e B); ordem dentro de cada set respeitada (raiz → Thread 1 → Thread 2); integridade de texto conferida (Lojas de apps conferida com a fonte, leitura de volta)
+- [ ] **MODO=VALIDACAO:** reports de squad atualizados no painel 156 e verificados **antes** do primeiro envio ao Slack; mensagens finais na versão objetiva com os links dos painéis
 - [ ] Fase 0 (orientações editoriais) lida ou registrada como ⚠️
 - [ ] Fase 1 (Tabela de Eventos e Incidentes — 10 canais, 14 dias) construída ou registrada como ⚠️
 - [ ] Correlação cruzada aplicada — eventos de outras squads checados em cada report, não só os do próprio canal
