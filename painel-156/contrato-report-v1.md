@@ -26,7 +26,7 @@ O layout (CSS e JS) já está publicado no painel 156 e desenha qualquer report 
 | `recl` | | `{motivo, n, var, resumos, nr, cob, temas[[nome,n]], exp[], cor[], ex[], aberto}` | 5 (temas 6; exp/cor/ex 3) |
 | `mencoes` | | `{cards[{f,v,sub,serie,lis[]}], cor[], trechos[{txt,f}], fonte}` — NPS Relacional, Lojas de apps e Redes sociais | 3 cards, 3 trechos |
 | `cenario` | | `{t, sub, serie[[rótulo,valor,nota]], base, marc{rótulo:texto}, fatos[{v,t}], fecho}` | |
-| `eventos` | | `{d, tag, g(bad/hot), txt, old}`; `old:true` vai para "semanas anteriores" | 14 |
+| `eventos` | | `{d, tag, g(bad/hot), txt, old}`; `old:true` vai para "semanas anteriores"; o `txt` termina com `Impacto: …` (indicador, variação e comparação com a semana anterior; ou `Impacto: sem variação relevante nos indicadores`) | 14 |
 | `atualiz` | | `{t, itens[], nota, link{t,u(https)}, fonte}` | 5 itens |
 | `rodape` | | `{fonte}` | |
 

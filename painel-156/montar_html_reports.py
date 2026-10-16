@@ -22,7 +22,7 @@ ap.add_argument('--registro', required=True)
 ap.add_argument('--reports-dir', required=True)
 ap.add_argument('--out', required=True)
 ap.add_argument('--manifest', required=True)
-ap.add_argument('--max-total', type=int, default=110000, help='limite do total dos blocos de dados, em bytes')
+ap.add_argument('--max-total', type=int, default=200000, help='limite do total dos blocos de dados, em bytes (a semana 41 real: ~155 KB, aceita pelo Arturito)')
 a = ap.parse_args()
 
 sk = open(a.skeleton, encoding='utf-8').read()

@@ -80,6 +80,26 @@ def validar(d):
         soma = sum(p.get('p', 0) for p in fu['partes'])
         if abs(soma - 100) > 1.5:
             w.append('funil.partes: percentuais somam %.1f (esperado ~100)' % soma)
+    c = d.get('cenario')
+    if c:
+        num = lambda v: isinstance(v, (int, float)) and not isinstance(v, bool)
+        for i, x in enumerate(c.get('serie') or []):
+            if not (isinstance(x, list) and len(x) >= 2 and num(x[1])):
+                e.append('cenario.serie[%d]: o valor (2o item) deve ser um numero' % i)
+        b = c.get('base')
+        if b is not None and not num(b) and not (isinstance(b, str) and len(b) <= 120):
+            e.append('cenario.base deve ser numero ou texto curto (ate 120 caracteres)')
+        elif isinstance(b, str) and len(b) > 80:
+            w.append('cenario.base: texto com %d caracteres (>80)' % len(b))
+        marc = c.get('marc') or {}
+        if not isinstance(marc, dict):
+            e.append('cenario.marc deve ser um objeto {rotulo: texto curto}')
+        else:
+            for k, v in marc.items():
+                if not isinstance(v, str) or len(v) > 120:
+                    e.append('cenario.marc[%r]: texto de ate 120 caracteres' % k)
+                elif len(v) > 80:
+                    w.append('cenario.marc[%r]: texto com %d caracteres (>80)' % (k, len(v)))
     lk = (d.get('atualiz') or {}).get('link')
     if lk and not str(lk.get('u', '')).startswith('https://'):
         e.append('atualiz.link.u deve ser https://')
