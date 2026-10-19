@@ -337,7 +337,7 @@ o setup inicial ou após mudanças relevantes no `SKILL.md`.
 - [ ] Painel 156 mostra a nova "Semana NN" em cada aba **Report da squad**
 - [ ] Os links `...id=156&r=<chave>/rep` das mensagens abrem o report certo (conferir 3: um simples,
   um com sub-produto, um dos executivos) e o link do 141 abre
-- [ ] Os links com `&amp;` no Slack renderizam corretamente (se aparecer `&amp;` literal na URL, trocar por `&`)
+- [ ] Os links no Slack usam `&` puro na URL (nunca `&amp;`) e abrem o report certo
 - [ ] Mensagens: raiz só com título, manchete e links (≤ 6 linhas); thread com 3 respostas (resultados, alertas e destaques, menções + UX); negrito com `**`
 - [ ] Números do Slack iguais aos do report no painel
 - [ ] Nenhuma frase sobre rascunho, validação ou falha de ferramenta nos textos

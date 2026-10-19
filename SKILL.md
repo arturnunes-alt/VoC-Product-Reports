@@ -1374,7 +1374,7 @@ serviço (cobrança, prazo, atendimento).
 - Rótulo = campo `rotulo_link` de `painel-156/registro-painel.json` (ex.: `Report de Empréstimo
   Pessoal`, `Report de Pix`, `Report de Minha Conta`, `Report de Cartão de Crédito`). Geral e Executivo:
   `Report Geral` e `Report Executivo`. O painel 141 é sempre `Experiência RecargaPay`.
-- Em `<url|rótulo>`, escrever o `&` da URL como `&amp;` (regra de escape do Slack). URL do report:
+- Em `<url|rótulo>`, escrever o `&` da URL **como `&` puro**: o `slack_send_message` recebe markdown e não converte `&amp;`, que aparece literal e quebra o link (confirmado em 19/10/2026). URL do report:
   `{url_painel}&r={chave}/rep` (ver `canais.json › painel`); na chave, espaço vira `%20` e acento vira
   percent-encoding (ex.: `fraude/conta%20desativada`).
 - **Falha do painel ou report ausente:** a linha de links vira
