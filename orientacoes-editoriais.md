@@ -148,13 +148,13 @@ Semana atual: *62 pts* (+4 vs sem. ant.) | Meta: 75
   canal abaixo valem para esse conteúdo completo.
 - **Painel 156 (Routine B):** o report completo de cada squad, em dados (JSON) que o painel desenha:
   alertas, indicadores, funil, motivos e causas, reclamações, menções, cenário e eventos.
-- **Canais reais das squads (Routine B):** um **resumo simplificado**, nesta ordem: manchete de jornal
-  (o que foi verificado na semana em resultados, eventos, incidentes, alertas e menções, relacionando com
-  a semana anterior quando fizer sentido), alertas, eventos e incidentes com o impacto observado, cenário
-  geral de NPS Transacional, suporte e menções em NPS Relacional, lojas de apps e redes sociais com um
-  resumo do que foi dito, mais os links (hiperlink no nome: `Report de {produto}` e Experiência
-  RecargaPay). Nada de análise longa, reclamações por motivo ou perfil de clientes no Slack: isso fica
-  no painel.
+- **Canais reais das squads (Routine B):** uma **mensagem principal** com título, manchete de jornal
+  (o que foi verificado na semana, relacionando com a semana anterior quando fizer sentido), linha fina
+  e links (hiperlink no nome: `Report de {produto}` e Experiência RecargaPay), e, **na thread**:
+  resultados (NPS Transacional e suporte), alertas e destaques (eventos e incidentes com o impacto
+  observado) e menções em NPS Relacional, lojas de apps e redes sociais com um resumo do que foi dito e
+  o bloco de **UX do produto** (design, layout, informação, telas). Nada de análise longa, reclamações
+  por motivo ou perfil de clientes no Slack: isso fica no painel.
 
 As três versões usam **os mesmos números**. A análise (inferência com fonte e data, correlação sem
 "causou", sem PII) é a mesma; muda só o quanto de texto vai a cada lugar.

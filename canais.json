@@ -607,15 +607,21 @@
     "se_atualizacao_falhar": "A mensagem do Slack segue so com o link do painel 156 geral (url_painel); sem link de report de squad e sem o link do 141. A falha vai so para a notificacao interna."
   },
   "slack_simplificado": {
-    "descricao": "Mensagem final enviada pela Routine B aos canais reais. Uma mensagem por set, sem threads. O detalhe completo fica no painel 156 (e, na semana, no rascunho de #the-voice-cx).",
+    "descricao": "Mensagem final enviada pela Routine B aos canais reais: uma mensagem principal por set (titulo, manchete e links) e, na thread, tres respostas (resultados; alertas e destaques; mencoes com UX do produto). O detalhe completo fica no painel 156 (e, na semana, no rascunho de #the-voice-cx).",
     "secoes": [
+      "Raiz: manchete, linha fina, titulo e links",
+      "Thread 1: Resultados (NPS Transacional, suporte)",
+      "Thread 2: Alertas e destaques (eventos e incidentes)",
+      "Thread 3: Mencoes e UX do produto",
       "Alertas",
       "NPS Transacional",
       "Suporte",
       "Mencoes (NPS Relacional, Lojas de apps, Redes sociais)",
       "Links"
     ],
-    "limite_linhas": 14,
+    "limite_linhas_raiz": 6,
+    "limite_linhas_raiz_executivos": 14,
+    "limite_linhas_resposta_thread": 12,
     "links_sempre": [
       "link do report da squad no painel 156 (so se o report foi publicado)",
       "painel Experiencia RecargaPay (141)"

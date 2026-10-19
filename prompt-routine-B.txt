@@ -67,8 +67,11 @@ dashboard PAINEL_ID com arturito_update_dashboard, enviando SOMENTE html e ratio
 (copiados integralmente dos arquivos, sem alterar). Se a atualização falhar duas vezes, ou se a
 ferramenta não estiver disponível, NÃO aborte: registre a falha só na notificação interna e siga.
 Só depois do painel, na Fase 4C, envie a versão SIMPLIFICADA (sem o marcador [RASCUNHO →], uma
-mensagem por set, sem threads: alertas, NPS Transacional, suporte e menções em NPS Relacional,
-lojas e redes) ao canal real de cada squad, conforme canais.json. Links: com o painel atualizado e
+mensagem principal por set com título, manchete e links; e, na thread dessa mensagem, três
+respostas: resultados (NPS Transacional e suporte), alertas e destaques (eventos e incidentes com
+impacto) e menções em NPS Relacional, lojas e redes, com o bloco de UX do produto — design, layout,
+informação e telas) ao canal real de cada squad, usando thread_ts da mensagem principal; negrito
+com ** (um asterisco vira itálico), conforme canais.json. Links: com o painel atualizado e
 o report publicado, o link do report da squad no painel 156 e o link do painel 141; se o painel
 falhou ou o report ficou ausente, SOMENTE o link do painel 156 geral. Nunca mencione o processo
 de validação, o rascunho, falhas de ferramenta ou skill ausente no texto enviado. Se um MCP

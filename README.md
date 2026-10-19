@@ -302,7 +302,7 @@ dashboard PAINEL_ID com arturito_update_dashboard, enviando SOMENTE html e ratio
 (copiados integralmente dos arquivos, sem alterar). Se a atualização falhar duas vezes, ou se a
 ferramenta não estiver disponível, NÃO aborte: registre a falha só na notificação interna e siga.
 Só depois do painel, na Fase 4C, envie a versão SIMPLIFICADA (sem o marcador [RASCUNHO →], uma
-mensagem por set, sem threads: alertas, NPS Transacional, suporte e menções em NPS Relacional,
+mensagem principal por set (título, manchete e links) e, na thread, resultados, alertas e destaques e menções com UX do produto (NPS Relacional,
 lojas e redes) ao canal real de cada squad, conforme canais.json. Links: com o painel atualizado e
 o report publicado, o link do report da squad no painel 156 e o link do painel 141; se o painel
 falhou ou o report ficou ausente, SOMENTE o link do painel 156 geral. Nunca mencione o processo
@@ -338,7 +338,7 @@ o setup inicial ou após mudanças relevantes no `SKILL.md`.
 - [ ] Os links `...id=156&r=<chave>/rep` das mensagens abrem o report certo (conferir 3: um simples,
   um com sub-produto, um dos executivos) e o link do 141 abre
 - [ ] Os links com `&amp;` no Slack renderizam corretamente (se aparecer `&amp;` literal na URL, trocar por `&`)
-- [ ] Mensagens simplificadas: só alertas, NPS Transacional, suporte e menções; sem threads; ≤ 14 linhas
+- [ ] Mensagens: raiz só com título, manchete e links (≤ 6 linhas); thread com 3 respostas (resultados, alertas e destaques, menções + UX); negrito com `**`
 - [ ] Números do Slack iguais aos do report no painel
 - [ ] Nenhuma frase sobre rascunho, validação ou falha de ferramenta nos textos
 
@@ -388,8 +388,7 @@ o setup inicial ou após mudanças relevantes no `SKILL.md`.
 Sim — as mensagens usam a identidade da conta que autenticou o Slack MCP em cada Routine.
 
 **O que as squads recebem no Slack agora?**
-Uma mensagem curta por set (alertas, NPS Transacional, suporte e menções em NPS Relacional, lojas
-e redes) com o link do report da squad no painel 156 e o link do painel Experiência RecargaPay
+Uma mensagem principal por set (título, manchete e links) e, na thread, os resultados, alertas e destaques e as menções (NPS Relacional, lojas e redes) com o bloco de UX do produto, com o link do report da squad no painel 156 e o link do painel Experiência RecargaPay
 (141). O report completo e as threads de alertas ficam no rascunho de `#the-voice-cx` e no painel.
 
 **E se a atualização do painel falhar?**

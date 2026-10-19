@@ -148,7 +148,7 @@ try:
     check("id=141" in p.get("link_experiencia_recargapay", ""), "canais.json: link da Experiência RecargaPay (141)")
     check(p.get("campos_atualizados") == ["html", "rationale_md"], "canais.json: atualização só de html e rationale_md")
     check(set(p.get("campos_proibidos_na_atualizacao_semanal", [])) == {"js", "css", "queries"}, "canais.json: js, css e queries proibidos na atualização semanal")
-    check("slack_simplificado" in canais_json and canais_json["slack_simplificado"].get("limite_linhas"), "canais.json: bloco slack_simplificado")
+    check("slack_simplificado" in canais_json and canais_json["slack_simplificado"].get("limite_linhas_raiz"), "canais.json: bloco slack_simplificado")
     check("thread 3" in canais_json["pipeline_duas_etapas"]["routine_a_rascunho"].get("estrutura_de_cada_set", ""), "canais.json: Routine A com thread 3 (dados do painel)")
 except Exception as e:
     check(False, f"verificação do painel 156 (registro/canais) falhou: {e}")
