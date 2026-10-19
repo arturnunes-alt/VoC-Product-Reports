@@ -4,7 +4,7 @@ Pipeline semanal de VoC RecargaPay via **duas Claude Code Routines encadeadas**,
 janela de revisão humana entre elas.
 
 **Responsável:** Artur Nunes (artur.nunes@recargapay.com)
-**Última atualização:** 09/10/2026 (SKILL.md 3.11 — painel 156 e Slack simplificado)
+**Última atualização:** 19/10/2026 (SKILL.md 3.15 — Slack em mensagem principal + 3 respostas objetivas na thread, com manchete, UX do produto e links por produto)
 
 ---
 
@@ -36,9 +36,10 @@ nem no painel.
 faz o double-check de indicadores/eventos/datas/impactos e incorpora correções do time quando
 plausíveis. Depois **atualiza o painel 156** (campos `html` e `rationale_md`, nunca `js`, `css` ou
 `queries`) com um report por squad e, **só então**, envia a cada canal real uma **mensagem
-simplificada** (alertas, NPS Transacional, suporte e menções em NPS Relacional, lojas e redes)
-com os links do report da squad no painel 156 e do painel Experiência RecargaPay (141). Se o painel
-não puder ser atualizado, a mensagem sai só com o link do painel 156 geral. Os grupos executivos
+principal** (título, manchete sobre o produto e links do report da squad no painel 156 e do painel
+Experiência RecargaPay, 141) e, na **thread** dela, os resultados, alertas, eventos e incidentes,
+menções e o destaque de UX do produto (3 respostas curtas que só indicam o que há no Report). Se o painel não puder ser atualizado, a mensagem sai só com o
+link do painel 156 geral. Os grupos executivos
 recebem também os links de todos os reports de squad.
 
 As duas Routines compartilham o mesmo repositório e o mesmo `SKILL.md` — a diferença de
@@ -301,11 +302,20 @@ Na Fase 4B, montar e validar o campo html com painel-156/montar_html_reports.py 
 dashboard PAINEL_ID com arturito_update_dashboard, enviando SOMENTE html e rationale_md
 (copiados integralmente dos arquivos, sem alterar). Se a atualização falhar duas vezes, ou se a
 ferramenta não estiver disponível, NÃO aborte: registre a falha só na notificação interna e siga.
-Só depois do painel, na Fase 4C, envie a versão SIMPLIFICADA (sem o marcador [RASCUNHO →], uma
-mensagem por set, sem threads: alertas, NPS Transacional, suporte e menções em NPS Relacional,
-lojas e redes) ao canal real de cada squad, conforme canais.json. Links: com o painel atualizado e
-o report publicado, o link do report da squad no painel 156 e o link do painel 141; se o painel
-falhou ou o report ficou ausente, SOMENTE o link do painel 156 geral. Nunca mencione o processo
+Só depois do painel, na Fase 4C, envie ao canal real de cada squad, conforme canais.json (sem o
+marcador [RASCUNHO →]), a MENSAGEM PRINCIPAL e, na thread dela (thread_ts = ts devolvido), TRÊS
+respostas curtas, seguindo o TEMPLATE SLACK DA ROUTINE B do SKILL.md. Principal: na PRIMEIRA linha o
+título ":bar_chart: Report VoC — {produto} · Semana {NN} · {DD/MM}–{DD/MM/AAAA}"; logo depois a
+manchete (um destaque do produto ligado a evento, incidente ou novo resultado, relacionando com a
+semana anterior quando houver dado), a linha fina, os links (hiperlink no nome: "Report de {produto}"
+e "Experiência RecargaPay") e o aviso de que na thread há resultados, alertas, destaques, menções e
+UX. Thread, nesta ordem: (1) Resultados; (2) Alertas e Destaques; (3) Menções e UX do produto. Cada
+resposta é objetiva (só nomes e números), apenas indica o que há disponível no Report do painel 156 e
+termina com o link "Ver no Report"; o detalhe, o impacto observado, os temas e os trechos ficam no
+Report. Nunca poste o conteúdo da thread como mensagem solta no canal. Formatação: negrito com
+**dois asteriscos**; um asterisco só vira itálico. Com o painel atualizado e o report publicado, use
+o link do report da squad e o do painel 141; se o painel falhou ou o report ficou ausente, SOMENTE o
+link do painel 156 geral. Nunca mencione o processo
 de validação, o rascunho, falhas de ferramenta ou skill ausente no texto enviado. Se um MCP
 falhar após a validação inicial, omita as seções afetadas e continue.
 ```
@@ -338,7 +348,9 @@ o setup inicial ou após mudanças relevantes no `SKILL.md`.
 - [ ] Os links `...id=156&r=<chave>/rep` das mensagens abrem o report certo (conferir 3: um simples,
   um com sub-produto, um dos executivos) e o link do 141 abre
 - [ ] Os links com `&amp;` no Slack renderizam corretamente (se aparecer `&amp;` literal na URL, trocar por `&`)
-- [ ] Mensagens simplificadas: só alertas, NPS Transacional, suporte e menções; sem threads; ≤ 14 linhas
+- [ ] Cada set sai como **mensagem principal** (título na primeira linha, manchete sobre o produto, links) e **3 respostas curtas na thread** (Resultados · Alertas e Destaques · Menções e UX), que só indicam o que há no Report; as respostas usam o `thread_ts` da principal
+- [ ] Links com hiperlink no nome (`Report de {produto}` e `Experiência RecargaPay`), sem URL por extenso
+- [ ] Negrito aparece como negrito (`**texto**`); nenhuma mensagem inteira em itálico
 - [ ] Números do Slack iguais aos do report no painel
 - [ ] Nenhuma frase sobre rascunho, validação ou falha de ferramenta nos textos
 
@@ -356,7 +368,7 @@ o setup inicial ou após mudanças relevantes no `SKILL.md`.
 
 **Toda segunda, após 12h15 (após a Routine B publicar):**
 - Abrir o painel 156 e conferir que os reports da semana estão nas abas das squads
-- Confirmar que as mensagens simplificadas chegaram nos canais reais corretos, com os links
+- Confirmar que as mensagens principais (com a thread de resultados, alertas e destaques) chegaram nos canais reais corretos, com os links
 - Conferir se os comentários feitos na janela da manhã foram de fato incorporados
 - Tratar alertas 🔴 que exigem ação
 - Verificar se alguma seção foi omitida (possível falha de MCP em qualquer uma das duas Routines)
@@ -401,12 +413,12 @@ Só no painel 156 (aba Seguros › Report da squad). Seguros não tem canal nem 
 entra nas mensagens dos grupos executivos.
 
 **Se ninguém comentar nada no rascunho, o que acontece?**
-A Routine B atualiza o painel e envia as mensagens simplificadas normalmente — os dados são revalidados do zero de
+A Routine B atualiza o painel e envia as mensagens (principal + thread) normalmente — os dados são revalidados do zero de
 qualquer forma (não é uma cópia do rascunho), só não há ajuste vindo de comentário humano.
 
 **E se a Routine A falhar ou não rodar?**
 A Routine B detecta que não há rascunho em `#the-voice-cx` para aquele dia e prossegue
-gerando o painel e as mensagens simplificadas normalmente **direto no canal real da squad** — nunca de volta para
+gerando o painel e as mensagens (principal + thread) normalmente **direto no canal real da squad** — nunca de volta para
 `#the-voice-cx` (isso recriaria um rascunho sem ninguém revisar). Só não há comentários
 do time para incorporar; o resto do pipeline roda igual e a publicação final não fica
 bloqueada por falha da primeira etapa.

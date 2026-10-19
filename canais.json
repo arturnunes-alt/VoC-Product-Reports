@@ -552,11 +552,11 @@
     },
     "routine_b_validacao": {
       "horario": "12:15 BRT (segunda)",
-      "acao": "rele rascunho + comentarios em #the-voice-cx, revalida dados do zero, reconcilia, monta os reports de squad, atualiza o painel 156 e so entao dispara o Slack simplificado",
+      "acao": "rele rascunho + comentarios em #the-voice-cx, revalida dados do zero, reconcilia, monta os reports de squad, atualiza o painel 156 e so entao dispara o Slack (mensagem principal + thread)",
       "ordem": [
         "4A montar os JSON dos reports",
         "4B atualizar o painel 156 (html + rationale_md)",
-        "4C enviar o Slack simplificado aos canais reais"
+        "4C enviar o Slack aos canais reais (mensagem principal + thread)"
       ],
       "destino": "painel 156 + canal real de cada squad (sem marcador)",
       "classificacao_comentarios": [
@@ -607,19 +607,50 @@
     "se_atualizacao_falhar": "A mensagem do Slack segue so com o link do painel 156 geral (url_painel); sem link de report de squad e sem o link do 141. A falha vai so para a notificacao interna."
   },
   "slack_simplificado": {
-    "descricao": "Mensagem final enviada pela Routine B aos canais reais. Uma mensagem por set, sem threads. O detalhe completo fica no painel 156 (e, na semana, no rascunho de #the-voice-cx).",
+    "descricao": "Envio final da Routine B aos canais reais: por set, uma mensagem principal (titulo na primeira linha, manchete sobre o produto, linha fina e links) e 3 respostas curtas na thread (resultados | alertas e destaques | mencoes e UX). A thread so indica o que ha disponivel no Report do painel 156; o detalhe fica no Report.",
     "secoes": [
-      "Alertas",
-      "NPS Transacional",
-      "Suporte",
-      "Mencoes (NPS Relacional, Lojas de apps, Redes sociais)",
-      "Links"
+      "Titulo",
+      "Manchete e linha fina",
+      "Links (hiperlink no nome)",
+      "Resultados",
+      "Alertas e Destaques",
+      "Mencoes e UX do produto"
     ],
-    "limite_linhas": 14,
+    "limite_linhas": 6,
     "links_sempre": [
-      "link do report da squad no painel 156 (so se o report foi publicado)",
-      "painel Experiencia RecargaPay (141)"
+      "hiperlink no nome do report da squad no painel 156, rotulo \"Report de {produto}\" (so se o report foi publicado)",
+      "hiperlink \"Experiencia RecargaPay\" (painel 141)"
     ],
-    "grupos_executivos": "#cxm-team e #lideres-cx-e-cxm recebem a visao da empresa e os links de todos os reports de squad publicados"
+    "grupos_executivos": "#cxm-team e #lideres-cx-e-cxm recebem a visao da empresa e, na mensagem principal, os links de todos os reports de squad publicados",
+    "limite_linhas_executivos": 14,
+    "manchete": {
+      "manchete_max_caracteres": 120,
+      "linha_fina_max_caracteres": 240,
+      "relaciona_com_semana_anterior": "quando houver dado (serie de 5 semanas e alertas/eventos do report anterior)"
+    },
+    "estrutura": {
+      "mensagem_principal": [
+        "titulo (primeira linha)",
+        "manchete",
+        "linha fina",
+        "links (hiperlink no nome)",
+        "aviso do que ha na thread"
+      ],
+      "thread_respostas": [
+        "1 Resultados",
+        "2 Alertas e Destaques",
+        "3 Mencoes e UX do produto"
+      ],
+      "cada_resposta_termina_com": "Ver no Report (hiperlink)",
+      "thread_ts": "ts da mensagem principal",
+      "reply_broadcast": false,
+      "thread": [
+        "1 Resultados",
+        "2 Alertas e Destaques",
+        "3 Mencoes e UX do produto"
+      ]
+    },
+    "formatacao": "negrito com **dois asteriscos**; um asterisco so vira italico",
+    "linhas_por_resposta": 3
   }
 }
