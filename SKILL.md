@@ -1315,10 +1315,14 @@ serviço (cobrança, prazo, atendimento).
   "leitura direcional".
 - **Inferência:** a mesma regra da Fase 3 — só o que o texto diz, com a fonte; correlação com mudança
   de tela ou de layout é "coincide com" e só quando houver evento registrado.
-- **JSON (o que o Slack aponta tem de existir no Report):** os temas de UX entram em `mencoes.cards[].lis`
-  como linha `UX: {tema} ({N}) · {tema} ({N})` e 1 trecho em `mencoes.trechos` (`f` = fonte). Assim o painel
-  mostra o que a thread cita. O campo opcional `mencoes.ux` (`{n, itens[{t,n,f,txt}]}`) guarda os números
-  para o Slack; o painel o ignora.
+- **JSON (o que o Slack aponta tem de existir no Report):** todo report de squad leva o bloco de topo
+  **`ux`** (contrato v1: `{n, resumo, temas[{t, n, f, tom, pede, trechos[{txt,f}]}], isoladas[{txt,f,tema}], vazio, fonte}`),
+  que o painel 156 mostra na seção **🎨 UX** ("O que dizem e pedem"). Regras: até 4 temas, cada um com 3 ou
+  mais menções, `pede` obrigatório (1–2 frases dizendo **o que os clientes pedem ou comentam**, só com o
+  que o texto diz), até 2 trechos por tema e até 3 menções isoladas (menos de 3, sem tema recorrente).
+  Sem tema: `temas: []` e `vazio: "Sem tema de UX com 3 ou mais menções nesta semana."`. Os números da
+  resposta 3 da thread do Slack saem **deste bloco** (`temas[].t` e `n`), nunca de outra contagem.
+  `validar_report.py` recusa o report sem `ux` coerente.
 
 ### Manchete e linha fina (estilo manchete de jornal)
 

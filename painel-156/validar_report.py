@@ -8,7 +8,7 @@ import json, re, sys
 
 SQUADS = {'geral', 'pix', 'cartao', 'emprestimo', 't2p', 'link', 'account', 'seguros', 'cdb', 'transporte', 'fraude', 'outros'}
 TOP = {'squad', 'sub', 'rot', 'periodo', 'meta', 'pub', 'resumo', 'alertas', 'monit', 'ok', 'kpis', 'funil', 'motivos',
-       'causas', 'recl', 'mencoes', 'cenario', 'eventos', 'atualiz', 'rodape'}
+       'causas', 'recl', 'mencoes', 'ux', 'cenario', 'eventos', 'atualiz', 'rodape'}
 MAXN = {'alertas': 4, 'monit': 5, 'ok': 4, 'kpis': 6, 'motivos': 6, 'causas': 5, 'recl': 5, 'eventos': 14}
 HARD, ALVO = 20000, 10000
 CLS = {'up', 'down', 'flat', None}
@@ -69,6 +69,18 @@ def validar(d):
         e.append('mencoes.cards > 3')
     if len(mc.get('trechos', [])) > 3:
         e.append('mencoes.trechos > 3')
+    if 'ux' not in d:
+        e.append('ux ausente (bloco obrigatorio, ver contrato)')
+    ux = d.get('ux') or {}
+    if len(ux.get('temas', [])) > 4:
+        e.append('ux.temas > 4')
+    for i, t in enumerate(ux.get('temas', [])):
+        if len(t.get('trechos', [])) > 2:
+            e.append('ux.temas[%d].trechos > 2' % i)
+        if not t.get('pede'):
+            e.append('ux.temas[%d].pede obrigatorio (o que os clientes pedem ou comentam)' % i)
+    if len(ux.get('isoladas', [])) > 3:
+        e.append('ux.isoladas > 3')
     for i, x in enumerate(d.get('kpis') or []):
         s = x.get('serie') or []
         if s and not (3 <= len(s) <= 8 and all(isinstance(v, (int, float)) for v in s)):

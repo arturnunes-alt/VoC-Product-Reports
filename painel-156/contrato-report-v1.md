@@ -24,7 +24,8 @@ O layout (CSS e JS) já está publicado no painel 156 e desenha qualquer report 
 | `funil` | | `{partes:[{l,n,p,wow}], total, nota}` | |
 | `motivos` / `causas` | | `{t, n, ant, var}` / `{t, n, ant, bot, txt}` | 6 / 5 |
 | `recl` | | `{motivo, n, var, resumos, nr, cob, temas[[nome,n]], exp[], cor[], ex[], aberto}` | 5 (temas 6; exp/cor/ex 3) |
-| `mencoes` | | `{cards[{f,v,sub,serie,lis[]}], cor[], trechos[{txt,f}], fonte, ux?}` (`ux` opcional, só para o Slack: `{n, itens[{t,n,f,txt}]}`, ignorado pelo painel) — NPS Relacional, Lojas de apps e Redes sociais | 3 cards, 3 trechos |
+| `mencoes` | | `{cards[{f,v,sub,serie,lis[]}], cor[], trechos[{txt,f}], fonte}` — NPS Relacional, Lojas de apps e Redes sociais | 3 cards, 3 trechos |
+| `ux` | | **Seção “🎨 UX” do report** (`{n, resumo, temas[{t, n, f, tom, pede, trechos[{txt,f}]}], isoladas[{txt,f,tema}], vazio, fonte}`): o que os clientes pedem ou comentam sobre design, layout, informação e telas. `pede` é obrigatório em cada tema (o que dizem ou pedem, em linguagem direta). Sem tema com 3+ menções: `temas: []` e `vazio` com a frase de ausência. Os números da thread do Slack saem daqui. | 4 temas, 2 trechos, 3 isoladas |
 | `cenario` | | `{t, sub, serie[[rótulo,valor,nota]], base, marc{rótulo:texto}, fatos[{v,t}], fecho}` | |
 | `eventos` | | `{d, tag, g(bad/hot), txt, old}`; `old:true` vai para "semanas anteriores"; o `txt` termina com `Impacto: …` (indicador, variação e comparação com a semana anterior; ou `Impacto: sem variação relevante nos indicadores`) | 14 |
 | `atualiz` | | `{t, itens[], nota, link{t,u(https)}, fonte}` | 5 itens |
