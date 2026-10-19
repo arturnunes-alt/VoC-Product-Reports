@@ -620,7 +620,7 @@
       "Links"
     ],
     "limite_linhas_raiz": 6,
-    "limite_linhas_raiz_executivos": 14,
+    "limite_linhas_raiz_executivos": 15,
     "limite_linhas_resposta_thread": 3,
     "links_sempre": [
       "link do report da squad no painel 156 (so se o report foi publicado)",
